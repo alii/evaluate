@@ -486,11 +486,7 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
             ? await evaluateNode(node.left.property, scope)
             : ensure(
                 node.left.property,
-                (val): val is acorn.Identifier =>
-                  val !== null &&
-                  typeof val === 'object' &&
-                  'type' in val &&
-                  val.type === 'Identifier',
+                val => val.type === 'Identifier',
                 'Expected an identifier in non-computed MemberExpression'
               ).name;
 
@@ -555,8 +551,7 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
           const obj = await evaluateNode(
             ensure(
               node.left.object,
-              (val): val is acorn.Expression =>
-                val !== null && typeof val === 'object' && 'type' in val && val.type !== 'Super',
+              val => val.type !== 'Super',
               'Super is not supported for AssignmentExpression'
             ),
             scope
@@ -570,11 +565,7 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
             ? await evaluateNode(node.left.property, scope)
             : ensure(
                 node.left.property,
-                (val): val is acorn.Identifier =>
-                  val !== null &&
-                  typeof val === 'object' &&
-                  'type' in val &&
-                  val.type === 'Identifier',
+                val => val.type === 'Identifier',
                 'Expected an identifier in non-computed MemberExpression'
               ).name;
 
@@ -843,21 +834,16 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 }
 
 async function evaluateBinaryExpression(node: acorn.BinaryExpression, scope: Scope): Promise<any> {
-  const leftExpr = ensure(
-    node.left,
-    (val): val is acorn.Expression => val !== null && typeof val === 'object' && 'type' in val,
-    'Invalid left operand in BinaryExpression'
-  );
-
-  const rightExpr = ensure(
-    node.right,
-    (val): val is acorn.Expression => val !== null && typeof val === 'object' && 'type' in val,
-    'Invalid right operand in BinaryExpression'
-  );
-
   const [leftValue, rightValue] = await Promise.all([
-    evaluateNode(leftExpr, scope),
-    evaluateNode(rightExpr, scope),
+    evaluateNode(
+      ensure(
+        node.left,
+        val => val.type !== 'PrivateIdentifier',
+        'PrivateIdentifier is not supported for the left of a binary expression'
+      ),
+      scope
+    ),
+    evaluateNode(node.right, scope),
   ]);
 
   switch (node.operator) {
@@ -907,13 +893,7 @@ async function evaluateBinaryExpression(node: acorn.BinaryExpression, scope: Sco
 }
 
 async function evaluateUnaryExpression(node: acorn.UnaryExpression, scope: Scope): Promise<any> {
-  const argExpr = ensure(
-    node.argument,
-    (val): val is acorn.Expression => val !== null && typeof val === 'object' && 'type' in val,
-    'Invalid argument type in UnaryExpression'
-  );
-
-  const argument = await evaluateNode(argExpr, scope);
+  const argument = await evaluateNode(node.argument, scope);
 
   switch (node.operator) {
     case '+':
@@ -948,11 +928,7 @@ async function evaluateMemberExpression(node: acorn.MemberExpression, scope: Sco
     if (node.computed) {
       const propertyExpr = ensure(
         node.property,
-        (val): val is acorn.Expression =>
-          val !== null &&
-          typeof val === 'object' &&
-          'type' in val &&
-          val.type !== 'PrivateIdentifier',
+        val => val.type !== 'PrivateIdentifier',
         'PrivateIdentifier is not supported in computed MemberExpression'
       );
 
@@ -985,11 +961,7 @@ async function evaluateMemberExpression(node: acorn.MemberExpression, scope: Sco
     if (node.computed) {
       const propertyExpr = ensure(
         node.property,
-        (val): val is acorn.Expression =>
-          val !== null &&
-          typeof val === 'object' &&
-          'type' in val &&
-          val.type !== 'PrivateIdentifier',
+        val => val.type !== 'PrivateIdentifier',
         'PrivateIdentifier is not supported in computed MemberExpression'
       );
 
