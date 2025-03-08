@@ -36,7 +36,7 @@ function ensure<In, T extends In>(
  * @param script The JavaScript code to evaluate
  * @returns The result of evaluating the script
  */
-export async function evaluate<T>(globalObj: GlobalObject, script: string): Promise<T | undefined> {
+export async function evaluate<T>(globalObj: GlobalObject, script: string): Promise<T> {
   const ast = acorn.parse(script, {
     ecmaVersion: 2025,
     sourceType: 'module',
@@ -579,6 +579,11 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
               ).name;
 
           const memberValue = await evaluateNode(node.right, scope);
+
+          if (obj === undefined || obj === null) {
+            throw new TypeError(`Cannot set property '${prop}' of ${obj}`);
+          }
+
           obj[prop] = memberValue;
           return memberValue;
         } else if (node.left.type === 'ObjectPattern') {
@@ -720,6 +725,10 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 
         const { thisObj, superClass } = currentClassContext;
 
+        if (!superClass) {
+          throw new Error('Cannot use super() in a class with no superclass');
+        }
+
         const flatArgs: any[] = [];
         for (const arg of node.arguments) {
           if (arg.type === 'SpreadElement') {
@@ -734,7 +743,12 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
           }
         }
 
-        Reflect.apply(superClass, thisObj, flatArgs);
+        try {
+          Reflect.apply(superClass, thisObj, flatArgs);
+        } catch (error) {
+          throw new Error(`Error in super() call: ${String(error)}`);
+        }
+
         return undefined;
       } else {
         const callee = await evaluateNode(node.callee, scope);
@@ -965,7 +979,11 @@ async function evaluateMemberExpression(node: acorn.MemberExpression, scope: Sco
 
     const { thisObj, superClass } = currentClassContext;
 
-    const superProto = Object.getPrototypeOf(superClass.prototype);
+    if (!superClass) {
+      throw new Error('Cannot use super in a class with no superclass');
+    }
+
+    const superProto = Object.getPrototypeOf(Object.getPrototypeOf(thisObj));
 
     if (node.computed) {
       const propertyExpr = ensure(
@@ -981,14 +999,24 @@ async function evaluateMemberExpression(node: acorn.MemberExpression, scope: Sco
       const property = await evaluateNode(propertyExpr, scope);
 
       const propValue = superProto[property];
-      return typeof propValue === 'function' ? propValue.bind(thisObj) : propValue;
+
+      if (typeof propValue === 'function') {
+        return propValue.bind(thisObj);
+      }
+
+      return propValue;
     } else {
       if (node.property.type !== 'Identifier') {
         throw new Error('Unsupported property type in Super MemberExpression');
       }
 
       const propValue = superProto[node.property.name];
-      return typeof propValue === 'function' ? propValue.bind(thisObj) : propValue;
+
+      if (typeof propValue === 'function') {
+        return propValue.bind(thisObj);
+      }
+
+      return propValue;
     }
   } else {
     const objectExpr = node.object as acorn.Expression;
@@ -1133,7 +1161,16 @@ async function evaluateClassDefinition(
     } else {
       if (superClass) {
         constructor = function (this: any, ...args: any[]) {
-          superClass!.apply(this, args);
+          currentClassContext = {
+            thisObj: this,
+            superClass: superClass,
+          };
+
+          try {
+            superClass!.apply(this, args);
+          } finally {
+            currentClassContext = null;
+          }
         };
       } else {
         constructor = function () {};
@@ -1142,6 +1179,7 @@ async function evaluateClassDefinition(
 
     if (superClass) {
       Object.setPrototypeOf(constructor.prototype, superClass.prototype);
+
       Object.setPrototypeOf(constructor, superClass);
     }
 

@@ -737,25 +737,128 @@ describe('myEval', () => {
     });
   });
 
-  describe.skip('super references', () => {
-    test('super method calls', async () => {
+  describe('class declarations and inheritance', () => {
+    test('class definition and static methods', async () => {
       const code = `
+        class MathUtils {
+          static add(a, b) {
+            return a + b;
+          }
+          
+          static multiply(a, b) {
+            return a * b;
+          }
+        }
         
-        "Super references implemented"
+        [MathUtils.add(3, 4), MathUtils.multiply(2, 5)];
       `;
-
-      const result = await evaluate<string>({}, code);
-      expect(result).toBe('Super references implemented');
+      
+      const result = await evaluate<[number, number]>({}, code);
+      expect(result[0]).toBe(7);
+      expect(result[1]).toBe(10);
     });
-
-    test('super outside class throws error', async () => {
+    
+    test('inheritance of static methods', async () => {
       const code = `
+        class Base {
+          static baseMethod() {
+            return 'base static method';
+          }
+        }
         
-        "Super references properly error when used outside a class"
+        class Child extends Base {
+          static childMethod() {
+            return 'child static method';
+          }
+        }
+        
+        [Base.baseMethod(), Child.baseMethod(), Child.childMethod()];
       `;
-
+      
+      const result = await evaluate<[string, string, string]>({}, code);
+      expect(result[0]).toBe('base static method');
+      expect(result[1]).toBe('base static method');
+      expect(result[2]).toBe('child static method');
+    });
+    
+    test('class with getter method', async () => {
+      const code = `
+        class ConstantClass {
+          getPi() {
+            return 3.14159;
+          }
+        }
+        
+        const constants = new ConstantClass();
+        constants.getPi();
+      `;
+      
+      const result = await evaluate<number>({}, code);
+      expect(result).toBe(3.14159);
+    });
+    
+    test('class inheritance with methods', async () => {
+      const code = `
+        class Vehicle {
+          makeNoise() {
+            return "Vroom";
+          }
+        }
+        
+        class Car extends Vehicle {
+          makeNoise() {
+            return "Honk";
+          }
+        }
+        
+        const car = new Car();
+        car.makeNoise();
+      `;
+      
       const result = await evaluate<string>({}, code);
-      expect(result).toBe('Super references properly error when used outside a class');
+      expect(result).toBe("Honk");
+    });
+    
+    test('super method call in subclass', async () => {
+      const code = `
+        class Parent {
+          getName() {
+            return "Parent";
+          }
+          
+          describe() {
+            return "I am the " + this.getName();
+          }
+        }
+        
+        class Child extends Parent {
+          getName() {
+            return "Child";
+          }
+          
+          describe() {
+            return super.describe() + "'s child";
+          }
+        }
+        
+        const child = new Child();
+        child.describe();
+      `;
+      
+      const result = await evaluate<string>({}, code);
+      expect(result).toBe("I am the Child's child");
+    });
+    
+    test('super outside class throws error', async () => {
+      // Tests that super is not valid outside a class
+      const code = `
+        function test() {
+          super.method();
+        }
+        test();
+      `;
+      
+      await expect(evaluate<any>({}, code)).rejects.toThrow();
     });
   });
 });
