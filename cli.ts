@@ -4,8 +4,9 @@ import * as acorn from 'acorn';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { createInterface } from 'readline';
+import pkg from './package.json' with { type: 'json' };
 import { evaluate } from './src/evaluator.ts';
-
+  
 const args = process.argv.slice(2);
 const globalContext = {
   isEvaluate: true,
@@ -103,10 +104,10 @@ class History {
  * Starts an interactive Read-Eval-Print Loop with standard readline
  */
 async function startREPL() {
-  console.log('\n🦆 Scraggy REPL v0.0.9');
+  console.log('\n🦆 Scraggy REPL v' + pkg.version);
   console.log('Type .exit or press Ctrl+C to exit\n');
 
-  let replContext = { ...globalContext };
+  const replContext = { ...globalContext };
 
   const history = new History();
 
@@ -154,8 +155,6 @@ async function startREPL() {
       }
 
       const result = await evaluate(replContext, buffer);
-
-      // Don't reset the context - we need to maintain variables between evaluations
 
       if (result !== undefined) {
         console.log(result);

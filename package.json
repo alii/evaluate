@@ -1,6 +1,6 @@
 {
   "name": "scraggy",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "type": "module",
   "description": "A safe JavaScript expression evaluator",
   "license": "MIT",

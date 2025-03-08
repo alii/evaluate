@@ -59,6 +59,12 @@ export async function evaluateAST(globalObj: GlobalObject, ast: acorn.Program) {
       result = await evaluateNode(statement, globalScope);
     }
 
+    // Copy any new variables defined in the scope back to the global object
+    // This allows variables to persist between REPL evaluations
+    for (const [key, value] of globalScope.getVariables()) {
+      globalObj[key] = value;
+    }
+
     return result;
   } finally {
     globalScope.release();
