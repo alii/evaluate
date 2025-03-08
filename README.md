@@ -1,6 +1,9 @@
-<img width="150" align="center" src="https://raw.githubusercontent.com/alii/scraggy/refs/heads/main/scraggy.png" />
+<div align="center">
+<img width="150" src="https://raw.githubusercontent.com/alii/scraggy/refs/heads/main/scraggy.png" />
+<h1>Scraggy</h1>
+</div>
 
-A safe JavaScript code evaluator that doesn't use `eval()` or `Function()`. This library parses and executes JavaScript code using an AST-based approach.
+A relatively safe JavaScript code evaluator that doesn't use `eval()` or `Function()`. This library parses and executes JavaScript code using an AST-based approach.
 
 [![Tests](https://github.com/alii/evaluate/actions/workflows/bun-test.yml/badge.svg)](https://github.com/alii/scraggy/actions/workflows/bun-test.yml)
 
@@ -10,7 +13,6 @@ A safe JavaScript code evaluator that doesn't use `eval()` or `Function()`. This
 - Supports a subset of common JavaScript language features
 - Provides proper memory management and cleanup
 - Uses Acorn for parsing JavaScript into an AST
-- TypeScript support
 
 ## Installation
 
