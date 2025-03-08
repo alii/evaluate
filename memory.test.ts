@@ -78,6 +78,17 @@ describe('Memory Management', () => {
   });
 
   test('async functions clean up properly', async () => {
+    // Create a simple custom Promise implementation
+    class CustomPromise {
+      static resolve(value: unknown) {
+        return {
+          then(callback: (value: unknown) => unknown) {
+            return CustomPromise.resolve(callback(value));
+          }
+        };
+      }
+    }
+    
     const code = `
       let result;
       {
@@ -89,7 +100,7 @@ describe('Memory Management', () => {
       }
     `;
 
-    await evaluate({}, code);
+    await evaluate({ Promise: CustomPromise }, code);
     const stats = MemoryTracker.getInstance().getStats();
     expect(stats.activeFunctions).toBe(0);
     expect(stats.activeScopes).toBe(0);

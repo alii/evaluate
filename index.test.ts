@@ -272,6 +272,64 @@ describe('myEval', () => {
       `;
       expect(await evaluate<string>({}, code)).toBe('hello-world-!');
     });
+
+    test('destructuring with rest parameters', async () => {
+      const code = `
+        function processTeam(leader, ...members) {
+          return {
+            leader,
+            memberCount: members.length,
+            firstMember: members[0],
+            lastMember: members[members.length - 1]
+          };
+        }
+        
+        const result = processTeam('Alice', 'Bob', 'Charlie', 'Dave');
+        [result.leader, result.memberCount, result.firstMember, result.lastMember]
+      `;
+      const result = await evaluate<any[]>({}, code);
+      expect(result[0]).toBe('Alice');
+      expect(result[1]).toBe(3);
+      expect(result[2]).toBe('Bob');
+      expect(result[3]).toBe('Dave');
+    });
+
+    test('combining destructuring objects and rest parameters', async () => {
+      const code = `
+        function processUser({ name, role }, ...skills) {
+          return {
+            user: name + ' (' + role + ')',
+            skillCount: skills.length,
+            skillSet: skills.join(', ')
+          };
+        }
+        
+        const user = { name: 'Alice', role: 'Developer' };
+        const result = processUser(user, 'JavaScript', 'TypeScript', 'React');
+        [result.user, result.skillCount, result.skillSet]
+      `;
+      const result = await evaluate<any[]>({}, code);
+      expect(result[0]).toBe('Alice (Developer)');
+      expect(result[1]).toBe(3);
+      expect(result[2]).toBe('JavaScript, TypeScript, React');
+    });
+
+    test('combining destructuring arrays and rest parameters', async () => {
+      const code = `
+        function processCoordinates([x, y], ...labels) {
+          return {
+            point: \`(\${x},\${y})\`,
+            labels: labels
+          };
+        }
+        
+        const result = processCoordinates([10, 20], 'A', 'B', 'C');
+        [result.point, result.labels.join('-')]
+      `;
+      const result = await evaluate<any[]>({}, code);
+      expect(result[0]).toBe('(10,20)');
+      expect(result[1]).toBe('A-B-C');
+    });
   });
 
   describe('control flow', () => {
@@ -471,18 +529,26 @@ describe('myEval', () => {
   });
 
   describe('async/await', () => {
+    function getAsyncTestGlobals() {
+      return {
+        Promise: Promise,
+        Error: Error,
+        setTimeout: setTimeout,
+      };
+    }
+
     test('supports async functions', async () => {
       const code = `
         async function delay(ms) {
-          return new Promise(resolve => setTimeout(resolve, ms));
+          return Promise.resolve(ms);
         }
         async function test() {
           await delay(100);
           return 42;
         }
-        test()
+        test()  
       `;
-      const result = await evaluate<Promise<number>>({}, code);
+      const result = await evaluate<number>(getAsyncTestGlobals(), code);
       expect(result).toBe(42);
     });
 
@@ -497,7 +563,7 @@ describe('myEval', () => {
         }
         process()
       `;
-      const result = await evaluate<Promise<string>>({}, code);
+      const result = await evaluate<string>(getAsyncTestGlobals(), code);
       expect(result).toBe('test');
     });
 
@@ -513,7 +579,7 @@ describe('myEval', () => {
         }
         processAll()
       `;
-      const result = await evaluate<Promise<number>>({}, code);
+      const result = await evaluate<number>(getAsyncTestGlobals(), code);
       expect(result).toBe(6);
     });
 
@@ -525,7 +591,7 @@ describe('myEval', () => {
         };
         compute(5)
       `;
-      const result = await evaluate<Promise<number>>({}, code);
+      const result = await evaluate<number>(getAsyncTestGlobals(), code);
       expect(result).toBe(10);
     });
 
@@ -537,7 +603,7 @@ describe('myEval', () => {
         };
         double(3)
       `;
-      const result = await evaluate<Promise<number>>({}, code);
+      const result = await evaluate<number>(getAsyncTestGlobals(), code);
       expect(result).toBe(6);
     });
 
@@ -556,7 +622,7 @@ describe('myEval', () => {
         }
         handleError()
       `;
-      const result = await evaluate<Promise<string>>({}, code);
+      const result = await evaluate<string>(getAsyncTestGlobals(), code);
       expect(result).toBe('error caught');
     });
 
@@ -575,7 +641,7 @@ describe('myEval', () => {
         }
         parallel()
       `;
-      const result = await evaluate<Promise<number>>({}, code);
+      const result = await evaluate<number>(getAsyncTestGlobals(), code);
       expect(result).toBe(6);
     });
 
@@ -590,7 +656,7 @@ describe('myEval', () => {
         }
         test()
       `;
-      const result = await evaluate<Promise<number[]>>({}, code);
+      const result = await evaluate<number[]>(getAsyncTestGlobals(), code);
       expect(result).toEqual([2, 4, 6]);
     });
   });
@@ -724,7 +790,7 @@ describe('myEval', () => {
       await expect(evaluate<any[]>({}, code)).rejects.toThrow();
     });
 
-    test('destructuring function parameters not supported', async () => {
+    test('destructuring function parameters', async () => {
       const code = `
         function process({ name, age }) {
           return name + ' is ' + age;
@@ -733,7 +799,61 @@ describe('myEval', () => {
         process({ name: 'Dave', age: 30 });
       `;
 
-      await expect(evaluate<string>({}, code)).rejects.toThrow();
+      const result = await evaluate<string>({}, code);
+      expect(result).toBe('Dave is 30');
+    });
+
+    test('nested destructuring in function parameters', async () => {
+      const code = `
+        function process({ name, details: { age, location } }) {
+          return name + ' is ' + age + ' years old and lives in ' + location;
+        }
+        
+        process({ name: 'Dave', details: { age: 30, location: 'New York' } });
+      `;
+
+      const result = await evaluate<string>({}, code);
+      expect(result).toBe('Dave is 30 years old and lives in New York');
+    });
+
+    test('array destructuring in function parameters', async () => {
+      const code = `
+        function getCoordinates([x, y]) {
+          return 'Point: ' + x + ', ' + y;
+        }
+        
+        getCoordinates([10, 20]);
+      `;
+
+      const result = await evaluate<string>({}, code);
+      expect(result).toBe('Point: 10, 20');
+    });
+
+    test('mixed destructuring in function parameters', async () => {
+      const code = `
+        function process({ name, hobbies: [main, ...others] }) {
+          return name + ' enjoys ' + main + ' and ' + others.length + ' other activities';
+        }
+        
+        process({ name: 'Dave', hobbies: ['coding', 'hiking', 'reading'] });
+      `;
+
+      const result = await evaluate<string>({}, code);
+      expect(result).toBe('Dave enjoys coding and 2 other activities');
+    });
+
+    test('destructuring with rest in function parameters', async () => {
+      const code = `
+        function process({ name, ...rest }) {
+          return [name, Object.keys(rest).length];
+        }
+        
+        process({ name: 'Dave', age: 30, location: 'New York', job: 'Developer' });
+      `;
+
+      const result = await evaluate<any[]>({ Object }, code);
+      expect(result[0]).toBe('Dave');
+      expect(result[1]).toBe(3); // age, location, job
     });
   });
 
@@ -752,12 +872,12 @@ describe('myEval', () => {
         
         [MathUtils.add(3, 4), MathUtils.multiply(2, 5)];
       `;
-      
+
       const result = await evaluate<[number, number]>({}, code);
       expect(result[0]).toBe(7);
       expect(result[1]).toBe(10);
     });
-    
+
     test('inheritance of static methods', async () => {
       const code = `
         class Base {
@@ -774,13 +894,13 @@ describe('myEval', () => {
         
         [Base.baseMethod(), Child.baseMethod(), Child.childMethod()];
       `;
-      
+
       const result = await evaluate<[string, string, string]>({}, code);
       expect(result[0]).toBe('base static method');
       expect(result[1]).toBe('base static method');
       expect(result[2]).toBe('child static method');
     });
-    
+
     test('class with getter method', async () => {
       const code = `
         class ConstantClass {
@@ -792,11 +912,11 @@ describe('myEval', () => {
         const constants = new ConstantClass();
         constants.getPi();
       `;
-      
+
       const result = await evaluate<number>({}, code);
       expect(result).toBe(3.14159);
     });
-    
+
     test('class inheritance with methods', async () => {
       const code = `
         class Vehicle {
@@ -814,11 +934,11 @@ describe('myEval', () => {
         const car = new Car();
         car.makeNoise();
       `;
-      
+
       const result = await evaluate<string>({}, code);
-      expect(result).toBe("Honk");
+      expect(result).toBe('Honk');
     });
-    
+
     test('super method call in subclass', async () => {
       const code = `
         class Parent {
@@ -844,11 +964,11 @@ describe('myEval', () => {
         const child = new Child();
         child.describe();
       `;
-      
+
       const result = await evaluate<string>({}, code);
       expect(result).toBe("I am the Child's child");
     });
-    
+
     test('super outside class throws error', async () => {
       // Tests that super is not valid outside a class
       const code = `
@@ -857,7 +977,7 @@ describe('myEval', () => {
         }
         test();
       `;
-      
+
       await expect(evaluate<any>({}, code)).rejects.toThrow();
     });
   });
@@ -879,12 +999,12 @@ describe('myEval', () => {
         `;
         const result = await evaluate<any[]>({}, code);
         expect(result[0]).toBe(13); // length
-        expect(result[1]).toBe("HELLO, WORLD!"); // toUpperCase
-        expect(result[2]).toBe("hello, world!"); // toLowerCase
+        expect(result[1]).toBe('HELLO, WORLD!'); // toUpperCase
+        expect(result[2]).toBe('hello, world!'); // toLowerCase
         expect(result[3]).toBe(7); // indexOf
-        expect(result[4]).toBe("Hello"); // slice
-        expect(result[5]).toBe("World"); // substring
-        expect(result[6]).toEqual(["Hello", "World!"]); // split
+        expect(result[4]).toBe('Hello'); // slice
+        expect(result[5]).toBe('World'); // substring
+        expect(result[6]).toEqual(['Hello', 'World!']); // split
       });
     });
 
@@ -902,7 +1022,7 @@ describe('myEval', () => {
         `;
         const result = await evaluate<any[]>({}, code);
         expect(result[0]).toBe(5); // length
-        expect(result[1]).toBe("1-2-3-4-5"); // join
+        expect(result[1]).toBe('1-2-3-4-5'); // join
         expect(result[2]).toBe(4); // indexOf
         expect(result[3]).toEqual([2, 3]); // slice
         expect(result[4]).toEqual([1, 2, 3, 4, 5, 6, 7]); // spread
@@ -957,9 +1077,9 @@ describe('myEval', () => {
           ]
         `;
         const result = await evaluate<any[]>({}, code);
-        expect(result[0]).toBe("123.456"); // toString
+        expect(result[0]).toBe('123.456'); // toString
       });
-      
+
       test('Math object methods', async () => {
         const code = `
           [
@@ -983,6 +1103,118 @@ describe('myEval', () => {
         expect(result[5]).toBe(1); // min
         expect(result[6]).toBe(8); // pow
         expect(result[7]).toBe(4); // sqrt
+      });
+    });
+
+    describe('empty DEFAULT_SCOPE', () => {
+      test('no built-in globals by default', async () => {
+        // Try to access various globals that should not be available
+        const checkGlobal = async (globalName: string) => {
+          try {
+            await evaluate<any>({}, globalName);
+            // If we get here, the global exists which is not what we want
+            return false;
+          } catch (e: unknown) {
+            // We expect an error because the global should not exist
+            return (e as Error).message.includes(`${globalName} is not defined`);
+          }
+        };
+
+        // All of these should not be defined
+        expect(await checkGlobal('Promise')).toBe(true);
+        expect(await checkGlobal('Error')).toBe(true);
+        expect(await checkGlobal('setTimeout')).toBe(true);
+        expect(await checkGlobal('console')).toBe(true);
+      });
+
+      test('can provide globals explicitly', async () => {
+        // Create a minimal environment with just the globals we need
+        const globals = {
+          Error,
+          console: { log: console.log },
+        };
+
+        // First, check that each value exists or not exists as expected
+        const checkGlobal = async (globalName: string, shouldExist: boolean) => {
+          try {
+            const code = `typeof ${globalName} !== 'undefined'`;
+            const result = await evaluate<boolean>(globals, code);
+            return result === shouldExist;
+          } catch (e) {
+            return !shouldExist;
+          }
+        };
+
+        // These globals should be available
+        expect(await checkGlobal('Error', true)).toBe(true);
+        expect(await checkGlobal('console', true)).toBe(true);
+
+        // These globals should not be available
+        expect(await checkGlobal('Promise', false)).toBe(true);
+        expect(await checkGlobal('setTimeout', false)).toBe(true);
+      });
+
+      test('async/await with custom Promise implementation', async () => {
+        // Create a simple Promise-like implementation
+        class CustomPromise {
+          private result: unknown;
+          private resolveCallbacks: Array<(value: unknown) => void>;
+          
+          constructor(executor: (resolve: (value: unknown) => void) => void) {
+            this.result = undefined;
+            this.resolveCallbacks = [];
+
+            const resolve = (value: unknown) => {
+              this.result = value;
+              this.resolveCallbacks.forEach(cb => cb(value));
+            };
+
+            executor(resolve);
+          }
+
+          then(callback: (value: unknown) => unknown) {
+            if (this.result !== undefined) {
+              return new CustomPromise(resolve => resolve(callback(this.result)));
+            } else {
+              this.resolveCallbacks.push(callback);
+              return this;
+            }
+          }
+
+          static resolve(value: unknown) {
+            return new CustomPromise(resolve => resolve(value));
+          }
+
+          static all(promises: Array<CustomPromise>) {
+            return new CustomPromise(resolve => {
+              const results: unknown[] = [];
+              let count = 0;
+
+              promises.forEach((promise, index) => {
+                promise.then(result => {
+                  results[index] = result;
+                  count++;
+
+                  if (count === promises.length) {
+                    resolve(results);
+                  }
+                });
+              });
+            });
+          }
+        }
+
+        const code = `
+          async function test() {
+            const a = await Promise.resolve(42);
+            return a;
+          }
+          
+          test()
+        `;
+
+        const result = await evaluate<number>({ Promise: CustomPromise }, code);
+        expect(result).toBe(42);
       });
     });
   });

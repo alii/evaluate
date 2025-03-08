@@ -3,17 +3,6 @@ import { MemoryTracker } from './memory.ts';
 import { RuntimeFunction } from './runtime.ts';
 
 export class Scope {
-  public static DEFAULT_SCOPE = {
-    Promise,
-    Error,
-    ReferenceError,
-    SyntaxError,
-    TypeError,
-    setTimeout,
-    setInterval,
-    console,
-  };
-
   private variables: Map<string, any>;
   private parent: Scope | null;
   private children: Set<Scope>;
@@ -29,8 +18,6 @@ export class Scope {
 
     if (parentScope) {
       parentScope.addChild(this);
-    } else {
-      this.defineFromObject(Scope.DEFAULT_SCOPE);
     }
 
     MemoryTracker.getInstance().trackScope(this);

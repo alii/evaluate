@@ -264,13 +264,27 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
     case 'FunctionDeclaration': {
       if (!node.id) throw new Error('Function declaration must have a name');
       const funcName = node.id.name;
-      const funcParams = node.params.map(param => {
+      const funcParams = node.params.map((param, index) => {
         if (param.type === 'Identifier') {
-          return { name: param.name, isRest: false };
+          return { name: param.name, isRest: false, isDestructuring: false };
         } else if (param.type === 'RestElement' && param.argument.type === 'Identifier') {
-          return { name: param.argument.name, isRest: true };
+          return { name: param.argument.name, isRest: true, isDestructuring: false };
+        } else if (param.type === 'ObjectPattern') {
+          return {
+            name: `arg${index}`,
+            isRest: false,
+            isDestructuring: true,
+            destructuringPattern: param,
+          };
+        } else if (param.type === 'ArrayPattern') {
+          return {
+            name: `arg${index}`,
+            isRest: false,
+            isDestructuring: true,
+            destructuringPattern: param,
+          };
         } else {
-          throw new Error('Only identifier and rest parameters are supported');
+          throw new Error(`Unsupported parameter type: ${param.type}`);
         }
       });
       const isAsync = node.async || false;
@@ -395,13 +409,27 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
     }
 
     case 'ArrowFunctionExpression': {
-      const arrowParams = node.params.map(param => {
+      const arrowParams = node.params.map((param, index) => {
         if (param.type === 'Identifier') {
-          return { name: param.name, isRest: false };
+          return { name: param.name, isRest: false, isDestructuring: false };
         } else if (param.type === 'RestElement' && param.argument.type === 'Identifier') {
-          return { name: param.argument.name, isRest: true };
+          return { name: param.argument.name, isRest: true, isDestructuring: false };
+        } else if (param.type === 'ObjectPattern') {
+          return {
+            name: `arg${index}`,
+            isRest: false,
+            isDestructuring: true,
+            destructuringPattern: param,
+          };
+        } else if (param.type === 'ArrayPattern') {
+          return {
+            name: `arg${index}`,
+            isRest: false,
+            isDestructuring: true,
+            destructuringPattern: param,
+          };
         } else {
-          throw new Error('Only identifier and rest parameters are supported');
+          throw new Error(`Unsupported parameter type: ${param.type}`);
         }
       });
 
@@ -789,13 +817,27 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
       return evaluateUnaryExpression(node, scope);
 
     case 'FunctionExpression': {
-      const exprParams = node.params.map(param => {
+      const exprParams = node.params.map((param, index) => {
         if (param.type === 'Identifier') {
-          return { name: param.name, isRest: false };
+          return { name: param.name, isRest: false, isDestructuring: false };
         } else if (param.type === 'RestElement' && param.argument.type === 'Identifier') {
-          return { name: param.argument.name, isRest: true };
+          return { name: param.argument.name, isRest: true, isDestructuring: false };
+        } else if (param.type === 'ObjectPattern') {
+          return {
+            name: `arg${index}`,
+            isRest: false,
+            isDestructuring: true,
+            destructuringPattern: param,
+          };
+        } else if (param.type === 'ArrayPattern') {
+          return {
+            name: `arg${index}`,
+            isRest: false,
+            isDestructuring: true,
+            destructuringPattern: param,
+          };
         } else {
-          throw new Error('Only identifier and rest parameters are supported');
+          throw new Error(`Unsupported parameter type: ${param.type}`);
         }
       });
 
@@ -826,6 +868,21 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 
     case 'ClassExpression': {
       return evaluateClassDefinition(node, scope);
+    }
+
+    case 'TemplateLiteral': {
+      let result = '';
+
+      for (let i = 0; i < node.quasis.length; i++) {
+        result += node.quasis[i].value.cooked;
+
+        if (i < node.expressions.length) {
+          const exprValue = await evaluateNode(node.expressions[i], scope);
+          result += String(exprValue);
+        }
+      }
+
+      return result;
     }
 
     default:
@@ -1144,13 +1201,27 @@ async function evaluateClassDefinition(
       throw new Error(`Class methods must be function expressions, got ${element.value.type}`);
     }
 
-    const methodParams = element.value.params.map(param => {
+    const methodParams = element.value.params.map((param, index) => {
       if (param.type === 'Identifier') {
-        return { name: param.name, isRest: false };
+        return { name: param.name, isRest: false, isDestructuring: false };
       } else if (param.type === 'RestElement' && param.argument.type === 'Identifier') {
-        return { name: param.argument.name, isRest: true };
+        return { name: param.argument.name, isRest: true, isDestructuring: false };
+      } else if (param.type === 'ObjectPattern') {
+        return {
+          name: `arg${index}`,
+          isRest: false,
+          isDestructuring: true,
+          destructuringPattern: param,
+        };
+      } else if (param.type === 'ArrayPattern') {
+        return {
+          name: `arg${index}`,
+          isRest: false,
+          isDestructuring: true,
+          destructuringPattern: param,
+        };
       } else {
-        throw new Error('Only identifier and rest parameters are supported in class methods');
+        throw new Error(`Unsupported parameter type in class method: ${param.type}`);
       }
     });
 
