@@ -21,7 +21,7 @@ bun install scraggy
 ## Usage
 
 ```typescript
-import { evaluate } from './src/evaluator.ts';
+import { evaluate } from 'scraggy';
 
 // Simple evaluation with an empty context
 const result = await evaluate({}, '2 + 3'); // returns 5
