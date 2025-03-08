@@ -1,4 +1,4 @@
-# scraggy
+<img width="150" align="center" src="https://raw.githubusercontent.com/alii/scraggy/refs/heads/main/scraggy.png" />
 
 A safe JavaScript code evaluator that doesn't use `eval()` or `Function()`. This library parses and executes JavaScript code using an AST-based approach.
 

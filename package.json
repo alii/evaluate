@@ -6,6 +6,22 @@
   "license": "MIT",
   "types": "./dist/index.d.cts",
   "main": "./dist/index.cjs",
+  "homepage": "https://github.com/alii/evaluate",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alii/evaluate.git"
+  },
+  "bugs": {
+    "url": "https://github.com/alii/evaluate/issues"
+  },
+  "keywords": [
+    "javascript",
+    "evaluator",
+    "ast",
+    "eval",
+    "sandbox",
+    "safe-eval"
+  ],
   "exports": {
     "./package.json": "./package.json",
     ".": {
