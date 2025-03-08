@@ -10,7 +10,7 @@ describe('Memory Management', () => {
   test('scopes are cleaned up after block execution', async () => {
     const code = `
       {
-        let x = 1;
+        let x = 1; 
         {
           let y = 2;
           {
