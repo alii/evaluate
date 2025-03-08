@@ -8,18 +8,12 @@ import { ReplHistory } from './repl-history.ts';
 
 const args = process.argv.slice(2);
 const globalContext = {
-  isEvaluate: true,
-  console: {
-    log: console.log,
-    error: console.error,
-    warn: console.warn,
-    info: console.info,
-  },
-  Promise: Promise,
-  setTimeout: setTimeout,
-  clearTimeout: clearTimeout,
-  setInterval: setInterval,
-  clearInterval: clearInterval,
+  console,
+  Promise,
+  setTimeout,
+  clearTimeout,
+  setInterval,
+  clearInterval,
 };
 
 if (args.length === 0) {
