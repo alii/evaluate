@@ -5,7 +5,7 @@
 
 A relatively safe JavaScript code evaluator that doesn't use `eval()` or `Function()`. This library parses and executes JavaScript code using an AST-based approach.
 
-[![Tests](https://github.com/alii/evaluate/actions/workflows/bun-test.yml/badge.svg)](https://github.com/alii/scraggy/actions/workflows/bun-test.yml)
+[![Tests](https://github.com/alii/scraggy/actions/workflows/bun-test.yml/badge.svg)](https://github.com/alii/scraggy/actions/workflows/bun-test.yml)
 
 ## Features
 
