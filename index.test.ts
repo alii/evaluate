@@ -861,4 +861,129 @@ describe('myEval', () => {
       await expect(evaluate<any>({}, code)).rejects.toThrow();
     });
   });
+
+  describe('primitive methods', () => {
+    describe('String methods', () => {
+      test('basic string methods', async () => {
+        const code = `
+          const str = "Hello, World!";
+          [
+            str.length,
+            str.toUpperCase(),
+            str.toLowerCase(),
+            str.indexOf("World"),
+            str.slice(0, 5),
+            str.substring(7, 12),
+            str.split(", ")
+          ]
+        `;
+        const result = await evaluate<any[]>({}, code);
+        expect(result[0]).toBe(13); // length
+        expect(result[1]).toBe("HELLO, WORLD!"); // toUpperCase
+        expect(result[2]).toBe("hello, world!"); // toLowerCase
+        expect(result[3]).toBe(7); // indexOf
+        expect(result[4]).toBe("Hello"); // slice
+        expect(result[5]).toBe("World"); // substring
+        expect(result[6]).toEqual(["Hello", "World!"]); // split
+      });
+    });
+
+    describe('Array methods', () => {
+      test('basic array methods', async () => {
+        const code = `
+          const arr = [1, 2, 3, 4, 5];
+          [
+            arr.length,
+            arr.join("-"),
+            arr.indexOf(5),
+            arr.slice(1, 3),
+            [...arr, 6, 7]
+          ]
+        `;
+        const result = await evaluate<any[]>({}, code);
+        expect(result[0]).toBe(5); // length
+        expect(result[1]).toBe("1-2-3-4-5"); // join
+        expect(result[2]).toBe(4); // indexOf
+        expect(result[3]).toEqual([2, 3]); // slice
+        expect(result[4]).toEqual([1, 2, 3, 4, 5, 6, 7]); // spread
+      });
+
+      test('array mutator methods', async () => {
+        const code = `
+          function testPush() {
+            const arr = [1, 2, 3];
+            const result = arr.push(4, 5);
+            return [result, arr];
+          }
+          
+          function testPop() {
+            const arr = [1, 2, 3, 4, 5];
+            const result = arr.pop();
+            return [result, arr];
+          }
+          
+          function testShift() {
+            const arr = [1, 2, 3, 4, 5];
+            const result = arr.shift();
+            return [result, arr];
+          }
+          
+          function testUnshift() {
+            const arr = [3, 4, 5];
+            const result = arr.unshift(1, 2);
+            return [result, arr];
+          }
+          
+          [
+            testPush(),
+            testPop(),
+            testShift(),
+            testUnshift()
+          ]
+        `;
+        const result = await evaluate<any[]>({}, code);
+        expect(result[0]).toEqual([5, [1, 2, 3, 4, 5]]); // push returns new length
+        expect(result[1]).toEqual([5, [1, 2, 3, 4]]); // pop returns popped item
+        expect(result[2]).toEqual([1, [2, 3, 4, 5]]); // shift returns shifted item
+        expect(result[3]).toEqual([5, [1, 2, 3, 4, 5]]); // unshift returns new length
+      });
+    });
+
+    describe('Number methods', () => {
+      test('basic number methods', async () => {
+        const code = `
+          [
+            (123.456).toString()
+          ]
+        `;
+        const result = await evaluate<any[]>({}, code);
+        expect(result[0]).toBe("123.456"); // toString
+      });
+      
+      test('Math object methods', async () => {
+        const code = `
+          [
+            Math.abs(-5),
+            Math.ceil(4.3),
+            Math.floor(4.7),
+            Math.round(4.5),
+            Math.max(1, 2, 3, 4, 5),
+            Math.min(1, 2, 3, 4, 5),
+            Math.pow(2, 3),
+            Math.sqrt(16)
+          ]
+        `;
+        const globalObj = { Math };
+        const result = await evaluate<any[]>(globalObj, code);
+        expect(result[0]).toBe(5); // abs
+        expect(result[1]).toBe(5); // ceil
+        expect(result[2]).toBe(4); // floor
+        expect(result[3]).toBe(5); // round
+        expect(result[4]).toBe(5); // max
+        expect(result[5]).toBe(1); // min
+        expect(result[6]).toBe(8); // pow
+        expect(result[7]).toBe(4); // sqrt
+      });
+    });
+  });
 });
