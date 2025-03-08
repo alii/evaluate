@@ -41,6 +41,32 @@ const code = `
   factorial(5)
 `;
 const result = await evaluate({}, code); // returns 120
+
+// Class inheritance with super
+const classCode = `
+  class Animal {
+    makeSound() {
+      return "Generic animal sound";
+    }
+  }
+  
+  class Dog extends Animal {
+    makeSound() {
+      return super.makeSound() + " and Woof!";
+    }
+  }
+  
+  new Dog().makeSound();
+`;
+const classResult = await evaluate({}, classCode); // returns "Generic animal sound and Woof!"
+
+// Destructuring assignment
+const destructuringCode = `
+  const { x, y } = { x: 1, y: 2 };
+  const [a, b] = [3, 4];
+  [x, y, a, b];
+`;
+const destructuringResult = await evaluate({}, destructuringCode); // returns [1, 2, 3, 4]
 ```
 
 ## Supported Features
@@ -61,6 +87,11 @@ const result = await evaluate({}, code); // returns 120
 - try/catch/finally blocks
 - async/await with Promises
 - switch statements
+- Class declarations and class expressions with inheritance
+- Destructuring assignments (object and array)
+- Super references in class methods
+- Common string and array methods (length, toString, join, slice, etc.)
+- Basic array mutator methods (push, pop, shift, unshift)
 
 ## Limitations and Unsupported Features
 
@@ -68,23 +99,22 @@ To avoid running into unexpected issues, be aware of the following unsupported f
 
 ### Unsupported Syntax
 
-- Class declarations and class expressions
 - For loops (for, for...in, for...of)
 - Module import/export statements
-- Destructuring assignments
 - Optional chaining (?.)
-- Nullish coalescing (??)
 - Private fields (#property)
-- Super references
 - Generator functions and yield
 - BigInt literals
-- Regular expression literals
+- Default values in destructuring assignments
+- Destructuring in function parameters
 
 ### Partially Supported
 
-- Spread operators in objects are supported, but the property spread logic differs slightly from standard JS
+- Regular expression literals (should be provided via global context)
 - Object method definitions use function expressions under the hood
 - Only basic error handling is implemented
+- Built-in objects like Math, JSON, Date, etc. need to be explicitly provided in the global context
+- Nullish coalescing (??) is supported in binary expressions
 
 ### Runtime Environment
 
