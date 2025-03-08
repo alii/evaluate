@@ -35,8 +35,7 @@ export class Scope {
 
     MemoryTracker.getInstance().trackScope(this);
   }
-  
-  // Getter for the parent scope - needed for super references
+
   getParent(): Scope | null {
     return this.parent;
   }

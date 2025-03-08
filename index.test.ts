@@ -318,7 +318,7 @@ describe('myEval', () => {
       `;
       expect(await evaluate<string>({}, code)).toBe("It's an apple");
     });
-    
+
     test('handles switch with fallthrough', async () => {
       const code = `
         let count = 0;
@@ -338,11 +338,11 @@ describe('myEval', () => {
         
         count
       `;
-      // Should be 5 due to fallthrough (2 + 3)
+
       const result = await evaluate<number>({}, code);
       expect(result).toBe(5);
     });
-    
+
     test('handles switch with default case', async () => {
       const code = `
         let result = "";
@@ -361,9 +361,9 @@ describe('myEval', () => {
         
         result
       `;
-      expect(await evaluate<string>({}, code)).toBe("Unknown sound");
+      expect(await evaluate<string>({}, code)).toBe('Unknown sound');
     });
-    
+
     test('switch statements with empty cases', async () => {
       const code = `
         let x = 0;
@@ -382,7 +382,7 @@ describe('myEval', () => {
       `;
       expect(await evaluate<number>({}, code)).toBe(42);
     });
-    
+
     test('switch statements with nested logic', async () => {
       const code = `
         let result = "";
@@ -410,7 +410,7 @@ describe('myEval', () => {
         
         result
       `;
-      expect(await evaluate<string>({}, code)).toBe("red delicious");
+      expect(await evaluate<string>({}, code)).toBe('red delicious');
     });
 
     test('handles complex control flow', async () => {
@@ -624,7 +624,7 @@ describe('myEval', () => {
       expect(result.y).toBe(20);
     });
   });
-  
+
   describe('destructuring assignment', () => {
     test('basic object destructuring in variable declarations', async () => {
       const code = `
@@ -634,7 +634,7 @@ describe('myEval', () => {
       `;
       expect(await evaluate<string>({}, code)).toBe('Alice is 30');
     });
-    
+
     test('nested object destructuring', async () => {
       const code = `
         const user = { 
@@ -644,8 +644,8 @@ describe('myEval', () => {
             address: { city: 'New York' } 
           } 
         };
-        // Simpler version for now since our implementation doesn't fully support
-        // deeply nested destructuring in one statement
+        
+        
         const { name, details } = user;
         const { age, address } = details;
         const { city } = address;
@@ -653,7 +653,7 @@ describe('myEval', () => {
       `;
       expect(await evaluate<string>({}, code)).toBe('Bob, 25, New York');
     });
-    
+
     test('array destructuring in variable declarations', async () => {
       const code = `
         const numbers = [1, 2, 3, 4];
@@ -672,7 +672,7 @@ describe('myEval', () => {
       `;
       expect(await evaluate<string>({}, code)).toBe('Charlie is 40');
     });
-    
+
     test('array destructuring in assignment expressions', async () => {
       const code = `
         let first, second, rest;
@@ -681,21 +681,21 @@ describe('myEval', () => {
       `;
       expect(await evaluate<any[]>({}, code)).toEqual([10, 20, [30, 40]]);
     });
-    
+
     test('mixed destructuring', async () => {
       const code = `
         const data = {
           type: 'report',
           contents: ['summary', 'details', 'graphs']
         };
-        // Simpler version that does the same thing without nested destructuring
+        
         const { type, contents } = data;
         const [first, ...otherContents] = contents;
         [type, first, otherContents]
       `;
       expect(await evaluate<any[]>({}, code)).toEqual(['report', 'summary', ['details', 'graphs']]);
     });
-    
+
     test('skipped items in array destructuring', async () => {
       const code = `
         const values = [1, 2, 3, 4, 5];
@@ -704,7 +704,7 @@ describe('myEval', () => {
       `;
       expect(await evaluate<number[]>({}, code)).toEqual([1, 3, 5]);
     });
-    
+
     test('object destructuring with rest', async () => {
       const code = `
         const obj = { a: 1, b: 2, c: 3, d: 4 };
@@ -713,17 +713,17 @@ describe('myEval', () => {
       `;
       expect(await evaluate<any[]>({}, code)).toEqual([1, 2, { c: 3, d: 4 }]);
     });
-    
+
     test('destructuring with default values is not supported', async () => {
       const code = `
         const obj = { a: 1 };
         let { a, b = 2 } = obj;
         [a, b]
       `;
-      // This will throw since our implementation doesn't support default values
+
       await expect(evaluate<any[]>({}, code)).rejects.toThrow();
     });
-    
+
     test('destructuring function parameters not supported', async () => {
       const code = `
         function process({ name, age }) {
@@ -732,30 +732,28 @@ describe('myEval', () => {
         
         process({ name: 'Dave', age: 30 });
       `;
-      // Our implementation doesn't support destructuring in function parameters yet
+
       await expect(evaluate<string>({}, code)).rejects.toThrow();
     });
   });
-  
-  // Due to the complexity of implementing super, we'll skip these tests for now
-  // and consider them as a future improvement
+
   describe.skip('super references', () => {
     test('super method calls', async () => {
       const code = `
-        // Skipped as class implementation with super is complex
+        
         "Super references implemented"
       `;
-      
+
       const result = await evaluate<string>({}, code);
       expect(result).toBe('Super references implemented');
     });
-    
+
     test('super outside class throws error', async () => {
       const code = `
-        // Skipped as class implementation with super is complex
+        
         "Super references properly error when used outside a class"
       `;
-      
+
       const result = await evaluate<string>({}, code);
       expect(result).toBe('Super references properly error when used outside a class');
     });

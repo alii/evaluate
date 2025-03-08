@@ -4,13 +4,11 @@ import { Scope } from './scope.ts';
 
 export type GlobalObject = Record<string, any>;
 
-// Context for class methods to find this and super
 type ClassContext = {
   thisObj: any;
   superClass: any;
 };
 
-// Global variable to track the current class context for super references
 let currentClassContext: ClassContext | null = null;
 
 /**
@@ -102,46 +100,42 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
     case 'VariableDeclaration':
       for (const declarator of node.declarations) {
         const initValue = declarator.init ? await evaluateNode(declarator.init, scope) : undefined;
-        
+
         if (declarator.id.type === 'Identifier') {
-          // Simple case: let x = value;
           scope.define(declarator.id.name, initValue);
-        } 
-        else if (declarator.id.type === 'ObjectPattern') {
-          // Object destructuring: let { a, b } = obj;
+        } else if (declarator.id.type === 'ObjectPattern') {
           if (initValue === null || typeof initValue !== 'object') {
             throw new TypeError('Cannot destructure non-object');
           }
-          
+
           for (const property of declarator.id.properties) {
             if (property.type === 'RestElement') {
-              // Rest property: let { a, ...rest } = obj;
               if (property.argument.type !== 'Identifier') {
                 throw new Error('Rest element must be an identifier in object destructuring');
               }
-              
+
               const restObj = { ...initValue };
-              
-              // Remove all other properties that were explicitly destructured
+
               for (const otherProp of declarator.id.properties) {
                 if (otherProp !== property && otherProp.type === 'Property') {
-                  const key = otherProp.key.type === 'Identifier' 
-                    ? otherProp.key.name 
-                    : (otherProp.key.type === 'Literal' ? String(otherProp.key.value) : undefined);
-                    
+                  const key =
+                    otherProp.key.type === 'Identifier'
+                      ? otherProp.key.name
+                      : otherProp.key.type === 'Literal'
+                      ? String(otherProp.key.value)
+                      : undefined;
+
                   if (key) {
                     delete restObj[key];
                   }
                 }
               }
-              
+
               scope.define(property.argument.name, restObj);
-            } 
-            else if (property.type === 'Property') {
+            } else if (property.type === 'Property') {
               let key: string;
               let value: any;
-              
-              // Get the property key
+
               if (property.key.type === 'Identifier') {
                 key = property.key.name;
               } else if (property.key.type === 'Literal') {
@@ -149,26 +143,23 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
               } else {
                 throw new Error('Unsupported property key type in object destructuring');
               }
-              
-              // Handle property value
+
               if (property.value.type === 'Identifier') {
-                // Simple case: let { a } = obj;  (a gets obj.a)
                 value = initValue[key];
                 scope.define(property.value.name, value);
-              } 
-              else if (property.value.type === 'ObjectPattern') {
-                // Nested object destructuring: let { a: { b } } = obj;
+              } else if (property.value.type === 'ObjectPattern') {
                 const nestedObj = initValue[key];
                 if (nestedObj === null || typeof nestedObj !== 'object') {
                   throw new TypeError(`Cannot destructure non-object property ${key}`);
                 }
-                
-                // Recursively handle nested object pattern
+
                 for (const nestedProp of property.value.properties) {
                   if (nestedProp.type !== 'Property' || nestedProp.value.type !== 'Identifier') {
-                    throw new Error('Nested object destructuring with non-identifier values not supported');
+                    throw new Error(
+                      'Nested object destructuring with non-identifier values not supported'
+                    );
                   }
-                  
+
                   let nestedKey: string;
                   if (nestedProp.key.type === 'Identifier') {
                     nestedKey = nestedProp.key.name;
@@ -177,71 +168,64 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
                   } else {
                     throw new Error('Unsupported property key type in nested object destructuring');
                   }
-                  
+
                   scope.define(nestedProp.value.name, nestedObj[nestedKey]);
                 }
-              }
-              else if (property.value.type === 'ArrayPattern') {
-                // Mixed destructuring: let { a: [b, c] } = obj;
+              } else if (property.value.type === 'ArrayPattern') {
                 const nestedArr = initValue[key];
                 if (!Array.isArray(nestedArr)) {
                   throw new TypeError(`Cannot destructure non-array property ${key}`);
                 }
-                
+
                 for (let i = 0; i < property.value.elements.length; i++) {
                   const element = property.value.elements[i];
-                  if (!element) continue; // Skip holes in pattern
-                  
+                  if (!element) continue;
+
                   if (element.type === 'Identifier') {
                     scope.define(element.name, nestedArr[i]);
                   } else {
-                    throw new Error('Nested array destructuring with non-identifier elements not supported');
+                    throw new Error(
+                      'Nested array destructuring with non-identifier elements not supported'
+                    );
                   }
                 }
-              } 
-              else {
+              } else {
                 throw new Error('Unsupported property value type in object destructuring');
               }
             }
           }
-        } 
-        else if (declarator.id.type === 'ArrayPattern') {
-          // Array destructuring: let [a, b] = arr;
+        } else if (declarator.id.type === 'ArrayPattern') {
           if (!Array.isArray(initValue)) {
             throw new TypeError('Cannot destructure non-array');
           }
-          
+
           for (let i = 0; i < declarator.id.elements.length; i++) {
             const element = declarator.id.elements[i];
-            if (!element) continue; // Skip holes in pattern
-            
+            if (!element) continue;
+
             if (element.type === 'Identifier') {
-              // Simple case: let [a, b] = arr;
               scope.define(element.name, initValue[i]);
-            } 
-            else if (element.type === 'RestElement') {
-              // Rest element: let [a, ...rest] = arr;
+            } else if (element.type === 'RestElement') {
               if (element.argument.type !== 'Identifier') {
                 throw new Error('Rest element must be an identifier in array destructuring');
               }
-              
-              // Get all remaining elements
+
               const restValue = initValue.slice(i);
               scope.define(element.argument.name, restValue);
-              break; // Rest element must be the last one
-            } 
-            else if (element.type === 'ObjectPattern') {
-              // Nested destructuring: let [{ a, b }] = arr;
+              break;
+            } else if (element.type === 'ObjectPattern') {
               const nestedObj = initValue[i];
               if (nestedObj === null || typeof nestedObj !== 'object') {
                 throw new TypeError(`Cannot destructure non-object at index ${i}`);
               }
-              
+
               for (const prop of element.properties) {
                 if (prop.type !== 'Property' || prop.value.type !== 'Identifier') {
-                  throw new Error('Nested object destructuring with non-identifier values not supported');
+                  throw new Error(
+                    'Nested object destructuring with non-identifier values not supported'
+                  );
                 }
-                
+
                 let key: string;
                 if (prop.key.type === 'Identifier') {
                   key = prop.key.name;
@@ -250,21 +234,19 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
                 } else {
                   throw new Error('Unsupported property key type in nested object destructuring');
                 }
-                
+
                 scope.define(prop.value.name, nestedObj[key]);
               }
-            } 
-            else if (element.type === 'ArrayPattern') {
-              // Nested array destructuring: let [[a, b]] = arr;
+            } else if (element.type === 'ArrayPattern') {
               const nestedArr = initValue[i];
               if (!Array.isArray(nestedArr)) {
                 throw new TypeError(`Cannot destructure non-array at index ${i}`);
               }
-              
+
               for (let j = 0; j < element.elements.length; j++) {
                 const nestedElement = element.elements[j];
-                if (!nestedElement) continue; // Skip holes
-                
+                if (!nestedElement) continue;
+
                 if (nestedElement.type === 'Identifier') {
                   scope.define(nestedElement.name, nestedArr[j]);
                 } else {
@@ -273,8 +255,7 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
               }
             }
           }
-        } 
-        else {
+        } else {
           throw new Error(`Unsupported variable declaration pattern: ${declarator.id.type}`);
         }
       }
@@ -303,10 +284,8 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
       const returnValue = node.argument ? await evaluateNode(node.argument, scope) : undefined;
       throw new ReturnValue(returnValue);
     }
-    
+
     case 'BreakStatement': {
-      // This is a special case that gets handled by the switch statement
-      // We don't actually need to do anything here since the break logic is in the switch handler
       return undefined;
     }
 
@@ -346,61 +325,45 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
         }
       }
     }
-    
+
     case 'SwitchStatement': {
       const discriminant = await evaluateNode(node.discriminant, scope);
       const switchScope = new Scope(scope);
-      
+
       try {
         let result: any;
         let matched = false;
         let fallthrough = false;
-        
-        // Execute statements from the first matching case through subsequent cases
-        // until a break statement is encountered
+
         for (let i = 0; i < node.cases.length; i++) {
           const caseClause = node.cases[i];
-          
-          // For default case
+
           if (!caseClause.test) {
-            // Execute default case only if no previous case matched
             if (!matched && !fallthrough) {
-              fallthrough = true; // Start executing from here
+              fallthrough = true;
             }
-            // Otherwise skip default (for now) if we're already executing statements
-          } 
-          // For regular cases
-          else {
-            // If we're already in fallthrough mode, just continue executing
+          } else {
             if (!fallthrough) {
-              // Evaluate the case condition
               const testValue = await evaluateNode(caseClause.test, switchScope);
-              
-              // Check if this case matches
+
               if (discriminant === testValue) {
                 matched = true;
-                fallthrough = true; // Start executing from here
+                fallthrough = true;
               }
             }
           }
-          
-          // If this is a case we should execute (either matched or in fallthrough)
+
           if (fallthrough) {
-            // Execute all statements for this case
             for (const statement of caseClause.consequent) {
               if (statement.type === 'BreakStatement') {
-                // If we hit a break, stop executing switch
                 return result;
               }
-              
-              // Execute the statement
+
               result = await evaluateNode(statement, switchScope);
             }
-            
-            // If we reach here without a break, continue to the next case (fallthrough)
           }
         }
-        
+
         return result;
       } finally {
         switchScope.release();
@@ -454,19 +417,16 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
     }
 
     case 'AssignmentExpression': {
-      // Handle compound assignments (+=, -=, etc.)
       if (node.operator !== '=') {
         if (node.left.type === 'Identifier') {
-          // Get the current value for identifier
           const leftValue = scope.lookup(node.left.name);
           if (leftValue === undefined && !scope.lookup(node.left.name)) {
             throw new Error(`Reference Error: ${node.left.name} is not defined`);
           }
-          
+
           const rightValue = await evaluateNode(node.right, scope);
           let result;
-          
-          // Apply the compound operation
+
           switch (node.operator) {
             case '+=':
               result = leftValue + rightValue;
@@ -507,14 +467,12 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
             default:
               throw new Error(`Unsupported compound assignment operator: ${node.operator}`);
           }
-          
-          // Assign the result back
+
           if (!scope.assign(node.left.name, result)) {
             throw new Error(`Cannot assign to undefined variable ${node.left.name}`);
           }
           return result;
-        } 
-        else if (node.left.type === 'MemberExpression') {
+        } else if (node.left.type === 'MemberExpression') {
           if (node.left.object.type === 'Super') {
             throw new Error('Super is not supported for compound AssignmentExpression');
           }
@@ -539,8 +497,7 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
           const leftValue = obj[prop];
           const rightValue = await evaluateNode(node.right, scope);
           let result;
-          
-          // Apply the compound operation
+
           switch (node.operator) {
             case '+=':
               result = leftValue + rightValue;
@@ -581,26 +538,20 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
             default:
               throw new Error(`Unsupported compound assignment operator: ${node.operator}`);
           }
-          
+
           obj[prop] = result;
           return result;
-        }
-        else {
+        } else {
           throw new Error('Compound assignment not supported for this target type');
         }
-      } 
-      // Regular assignment (operator is '=')
-      else {
+      } else {
         if (node.left.type === 'Identifier') {
-          // Simple assignment: x = value
           const assignValue = await evaluateNode(node.right, scope);
           if (!scope.assign(node.left.name, assignValue)) {
             throw new Error(`Cannot assign to undefined variable ${node.left.name}`);
           }
           return assignValue;
-        } 
-        else if (node.left.type === 'MemberExpression') {
-          // Simple property assignment: obj.prop = value
+        } else if (node.left.type === 'MemberExpression') {
           const obj = await evaluateNode(
             ensure(
               node.left.object,
@@ -630,46 +581,44 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
           const memberValue = await evaluateNode(node.right, scope);
           obj[prop] = memberValue;
           return memberValue;
-        }
-        else if (node.left.type === 'ObjectPattern') {
-          // Object destructuring assignment: { a, b } = obj
+        } else if (node.left.type === 'ObjectPattern') {
           const rightValue = await evaluateNode(node.right, scope);
-          
+
           if (rightValue === null || typeof rightValue !== 'object') {
             throw new TypeError('Cannot destructure non-object in assignment');
           }
-          
-          // Process each property in the object pattern
+
           for (const property of node.left.properties) {
             if (property.type === 'RestElement') {
-              // Rest property: { a, ...rest } = obj
               if (property.argument.type !== 'Identifier') {
-                throw new Error('Rest element must be an identifier in object destructuring assignment');
+                throw new Error(
+                  'Rest element must be an identifier in object destructuring assignment'
+                );
               }
-              
+
               const restObj = { ...rightValue };
-              
-              // Remove all other properties that were explicitly destructured
+
               for (const otherProp of node.left.properties) {
                 if (otherProp !== property && otherProp.type === 'Property') {
-                  const key = otherProp.key.type === 'Identifier' 
-                    ? otherProp.key.name 
-                    : (otherProp.key.type === 'Literal' ? String(otherProp.key.value) : undefined);
-                    
+                  const key =
+                    otherProp.key.type === 'Identifier'
+                      ? otherProp.key.name
+                      : otherProp.key.type === 'Literal'
+                      ? String(otherProp.key.value)
+                      : undefined;
+
                   if (key) {
                     delete restObj[key];
                   }
                 }
               }
-              
+
               if (!scope.assign(property.argument.name, restObj)) {
                 throw new Error(`Cannot assign to undefined variable ${property.argument.name}`);
               }
-            } 
-            else if (property.type === 'Property') {
+            } else if (property.type === 'Property') {
               let key: string;
-              
-              // Get the property key
+
               if (property.key.type === 'Identifier') {
                 key = property.key.name;
               } else if (property.key.type === 'Literal') {
@@ -677,62 +626,53 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
               } else {
                 throw new Error('Unsupported property key type in object destructuring assignment');
               }
-              
-              // Handle property value
+
               if (property.value.type === 'Identifier') {
-                // Simple case: { a } = obj  (a gets obj.a)
                 const value = rightValue[key];
                 if (!scope.assign(property.value.name, value)) {
                   throw new Error(`Cannot assign to undefined variable ${property.value.name}`);
                 }
-              }
-              else {
+              } else {
                 throw new Error('Nested destructuring in assignment expressions not supported');
               }
             }
           }
-          
+
           return rightValue;
-        }
-        else if (node.left.type === 'ArrayPattern') {
-          // Array destructuring assignment: [a, b] = arr
+        } else if (node.left.type === 'ArrayPattern') {
           const rightValue = await evaluateNode(node.right, scope);
-          
+
           if (!Array.isArray(rightValue)) {
             throw new TypeError('Cannot destructure non-array in assignment');
           }
-          
+
           for (let i = 0; i < node.left.elements.length; i++) {
             const element = node.left.elements[i];
-            if (!element) continue; // Skip holes in pattern
-            
+            if (!element) continue;
+
             if (element.type === 'Identifier') {
-              // Simple case: [a, b] = arr
               if (!scope.assign(element.name, rightValue[i])) {
                 throw new Error(`Cannot assign to undefined variable ${element.name}`);
               }
-            } 
-            else if (element.type === 'RestElement') {
-              // Rest element: [a, ...rest] = arr
+            } else if (element.type === 'RestElement') {
               if (element.argument.type !== 'Identifier') {
-                throw new Error('Rest element must be an identifier in array destructuring assignment');
+                throw new Error(
+                  'Rest element must be an identifier in array destructuring assignment'
+                );
               }
-              
-              // Get all remaining elements
+
               const restValue = rightValue.slice(i);
               if (!scope.assign(element.argument.name, restValue)) {
                 throw new Error(`Cannot assign to undefined variable ${element.argument.name}`);
               }
-              break; // Rest element must be the last one
-            }
-            else {
+              break;
+            } else {
               throw new Error('Nested destructuring in assignment expressions not supported');
             }
           }
-          
+
           return rightValue;
-        }
-        else {
+        } else {
           throw new Error(`Unsupported assignment target type: ${node.left.type}`);
         }
       }
@@ -751,21 +691,18 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 
       return identValue;
     }
-    
+
     case 'ThisExpression': {
-      // Get the current 'this' value from scope
       const thisValue = scope.lookup('this');
-      
+
       if (thisValue === undefined) {
-        // If we're in a class method, the currentClassContext should have this
         if (currentClassContext) {
           return currentClassContext.thisObj;
         }
-        
-        // Otherwise, 'this' is not defined in the current context
+
         return undefined;
       }
-      
+
       return thisValue;
     }
 
@@ -776,16 +713,13 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
       return evaluateMemberExpression(node, scope);
 
     case 'CallExpression': {
-      // Handle super() constructor calls
       if (node.callee.type === 'Super') {
-        // This is a super() call in a constructor
         if (!currentClassContext) {
           throw new Error('Super constructor call is not properly bound to a class constructor');
         }
-        
+
         const { thisObj, superClass } = currentClassContext;
-        
-        // Process arguments
+
         const flatArgs: any[] = [];
         for (const arg of node.arguments) {
           if (arg.type === 'SpreadElement') {
@@ -799,15 +733,12 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
             flatArgs.push(await evaluateNode(arg, scope));
           }
         }
-        
-        // Call the super constructor with this
+
         Reflect.apply(superClass, thisObj, flatArgs);
         return undefined;
-      }
-      // Handle regular function calls and method calls
-      else {
+      } else {
         const callee = await evaluateNode(node.callee, scope);
-  
+
         const flatArgs: any[] = [];
         for (const arg of node.arguments) {
           if (arg.type === 'SpreadElement') {
@@ -821,22 +752,19 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
             flatArgs.push(await evaluateNode(arg, scope));
           }
         }
-  
+
         if (callee instanceof RuntimeFunction) {
           return callee.call(null, flatArgs);
         }
-  
+
         if (typeof callee === 'function') {
           if (node.callee.type === 'MemberExpression') {
-            // Handle super method calls that were already processed in evaluateMemberExpression
-            // The super method will already be bound to 'this'
             if (node.callee.object.type === 'Super') {
               return callee(...flatArgs);
             }
-            
-            // Regular method calls
+
             const obj = await evaluateNode(node.callee.object as acorn.Expression, scope);
-  
+
             if (obj === Promise && callee === Promise.all) {
               const promises = flatArgs[0];
               if (!Array.isArray(promises)) {
@@ -881,7 +809,7 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
           }
           return callee(...flatArgs);
         }
-  
+
         throw new Error('Attempted to call a non-function');
       }
     }
@@ -920,25 +848,21 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 
     case 'LogicalExpression':
       return evaluateLogicalExpression(node, scope);
-      
+
     case 'ClassDeclaration': {
-      // Handle class declaration
       if (!node.id) throw new Error('Class declaration must have a name');
       const className = node.id.name;
-      
-      // Create the class
+
       const classValue = await evaluateClassDefinition(node, scope);
-      
-      // Define the class in the scope
+
       scope.define(className, classValue);
       return undefined;
     }
-    
+
     case 'ClassExpression': {
-      // Handle class expression - similar to class declaration but returns the class
       return evaluateClassDefinition(node, scope);
     }
-    
+
     default:
       throw new Error(`Unsupported node type: ${node.type}`);
   }
@@ -1034,18 +958,15 @@ async function evaluateUnaryExpression(node: acorn.UnaryExpression, scope: Scope
 }
 
 async function evaluateMemberExpression(node: acorn.MemberExpression, scope: Scope): Promise<any> {
-  // Handle 'super' references
   if (node.object.type === 'Super') {
-    // Get this and super from the current class context
     if (!currentClassContext) {
       throw new Error('Super reference is not properly bound to a class method');
     }
-    
+
     const { thisObj, superClass } = currentClassContext;
-    
-    // Get the property from the super's prototype
+
     const superProto = Object.getPrototypeOf(superClass.prototype);
-    
+
     if (node.computed) {
       const propertyExpr = ensure(
         node.property,
@@ -1056,23 +977,20 @@ async function evaluateMemberExpression(node: acorn.MemberExpression, scope: Sco
           val.type !== 'PrivateIdentifier',
         'PrivateIdentifier is not supported in computed MemberExpression'
       );
-  
+
       const property = await evaluateNode(propertyExpr, scope);
-      // Return the property bound to 'this'
+
       const propValue = superProto[property];
       return typeof propValue === 'function' ? propValue.bind(thisObj) : propValue;
     } else {
       if (node.property.type !== 'Identifier') {
         throw new Error('Unsupported property type in Super MemberExpression');
       }
-  
-      // Return the method bound to 'this'
+
       const propValue = superProto[node.property.name];
       return typeof propValue === 'function' ? propValue.bind(thisObj) : propValue;
     }
-  }
-  // Regular member expression (non-super)
-  else {
+  } else {
     const objectExpr = node.object as acorn.Expression;
     const object = await evaluateNode(objectExpr, scope);
 
@@ -1199,7 +1117,6 @@ async function evaluateClassDefinition(
   node: acorn.ClassDeclaration | acorn.ClassExpression,
   scope: Scope
 ): Promise<any> {
-  // Evaluate the superclass if specified
   let superClass = null;
   if (node.superClass) {
     superClass = await evaluateNode(node.superClass, scope);
@@ -1207,51 +1124,43 @@ async function evaluateClassDefinition(
       throw new TypeError('Class extends value is not a constructor');
     }
   }
-  
-  // Create class constructor function
+
   const createClass = (constructorFn: Function | null): any => {
-    // If no constructor is defined, create a default one
     let constructor: Function;
-    
+
     if (constructorFn) {
       constructor = constructorFn;
     } else {
       if (superClass) {
-        // Default constructor with super() call
-        constructor = function(this: any, ...args: any[]) {
+        constructor = function (this: any, ...args: any[]) {
           superClass!.apply(this, args);
         };
       } else {
-        // Default constructor with no super
-        constructor = function() {};
+        constructor = function () {};
       }
     }
-    
-    // Setup the prototype chain
+
     if (superClass) {
       Object.setPrototypeOf(constructor.prototype, superClass.prototype);
       Object.setPrototypeOf(constructor, superClass);
     }
-    
+
     return constructor;
   };
-  
-  // Process class body elements
+
   let constructorMethod: Function | null = null;
   const staticMethods: Record<string, any> = {};
   const instanceMethods: Record<string, any> = {};
-  
+
   for (const element of node.body.body) {
     if (element.type !== 'MethodDefinition') {
       throw new Error(`Unsupported class element type: ${element.type}`);
     }
-    
-    // Skip private methods (they're not supported)
+
     if (element.key.type === 'PrivateIdentifier') {
       throw new Error('Private class elements are not supported');
     }
-    
-    // Get the method key name
+
     let methodName: string;
     if (element.key.type === 'Identifier') {
       methodName = element.key.name;
@@ -1260,12 +1169,11 @@ async function evaluateClassDefinition(
     } else {
       throw new Error(`Unsupported method key type: ${element.key.type}`);
     }
-    
-    // Get the method value (function)
+
     if (element.value.type !== 'FunctionExpression') {
       throw new Error(`Class methods must be function expressions, got ${element.value.type}`);
     }
-    
+
     const methodParams = element.value.params.map(param => {
       if (param.type === 'Identifier') {
         return { name: param.name, isRest: false };
@@ -1275,13 +1183,10 @@ async function evaluateClassDefinition(
         throw new Error('Only identifier and rest parameters are supported in class methods');
       }
     });
-    
-    // Create a special scope for the method that includes 'this' and 'super'
-    // We'll set the actual values when the method is called
+
     const isConstructor = element.kind === 'constructor';
     const isAsync = element.value.async || false;
-    
-    // Create method function - special handling for constructor
+
     if (isConstructor) {
       const runtimeFunc = new RuntimeFunction(
         methodParams,
@@ -1290,22 +1195,18 @@ async function evaluateClassDefinition(
         evaluateNode,
         isAsync
       );
-      
-      // Create wrapper function that will be used as the actual constructor
-      constructorMethod = function(this: any, ...args: any[]) {
-        // Create a new scope that includes 'this' and 'super'
+
+      constructorMethod = function (this: any, ...args: any[]) {
         const methodScope = new Scope(scope);
         methodScope.define('this', this);
         methodScope.define('super', superClass);
-        
-        // Set the current context so super calls can access it
+
         currentClassContext = {
           thisObj: this,
-          superClass: superClass
+          superClass: superClass,
         };
-        
+
         try {
-          // Call the runtime function with proper 'this' binding
           return runtimeFunc.call(this, args);
         } finally {
           currentClassContext = null;
@@ -1313,7 +1214,6 @@ async function evaluateClassDefinition(
         }
       };
     } else {
-      // Regular method (not constructor)
       const runtimeFunc = new RuntimeFunction(
         methodParams,
         element.value.body,
@@ -1321,30 +1221,25 @@ async function evaluateClassDefinition(
         evaluateNode,
         isAsync
       );
-      
-      // Create wrapper function that will be the actual method
-      const methodFunction = function(this: any, ...args: any[]) {
-        // Create a new scope that includes 'this' and 'super'
+
+      const methodFunction = function (this: any, ...args: any[]) {
         const methodScope = new Scope(scope);
         methodScope.define('this', this);
         methodScope.define('super', superClass);
-        
-        // Set the current context so super calls can access it
+
         currentClassContext = {
           thisObj: this,
-          superClass: superClass
+          superClass: superClass,
         };
-        
+
         try {
-          // Call the runtime function with proper 'this' binding
           return runtimeFunc.call(this, args);
         } finally {
           currentClassContext = null;
           methodScope.release();
         }
       };
-      
-      // Add method to appropriate collection based on whether it's static or not
+
       if (element.static) {
         staticMethods[methodName] = methodFunction;
       } else {
@@ -1352,15 +1247,12 @@ async function evaluateClassDefinition(
       }
     }
   }
-  
-  // Create the class with the constructor we found (or default)
+
   const classConstructor = createClass(constructorMethod);
-  
-  // Add instance methods to prototype
+
   Object.assign(classConstructor.prototype, instanceMethods);
-  
-  // Add static methods directly to constructor
+
   Object.assign(classConstructor, staticMethods);
-  
+
   return classConstructor;
 }
