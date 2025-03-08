@@ -12,6 +12,6 @@
     "noEmit": true,
     "resolveJsonModule": true
   },
-  "include": ["*.ts"],
+  "include": ["*.ts", "cli/cli.ts"],
   "exclude": ["node_modules"]
 }
