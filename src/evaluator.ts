@@ -779,46 +779,6 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 
             const obj = await evaluateNode(node.callee.object as acorn.Expression, scope);
 
-            if (obj === Promise && callee === Promise.all) {
-              const promises = flatArgs[0];
-              if (!Array.isArray(promises)) {
-                throw new TypeError('Promise.all argument must be an array');
-              }
-              return Promise.all(
-                promises.map(async p => {
-                  const result = await Promise.resolve(p);
-                  return result;
-                })
-              );
-            }
-            if (Array.isArray(obj) && callee === Array.prototype.reduce) {
-              const [callback, initialValue] = flatArgs;
-              if (typeof callback !== 'function' && !(callback instanceof RuntimeFunction)) {
-                throw new TypeError('Array.prototype.reduce callback must be a function');
-              }
-              let accumulator = initialValue !== undefined ? initialValue : obj[0];
-              const startIndex = initialValue !== undefined ? 0 : 1;
-              for (let i = startIndex; i < obj.length; i++) {
-                if (callback instanceof RuntimeFunction) {
-                  accumulator = await callback.call(null, [accumulator, obj[i], i, obj]);
-                } else {
-                  accumulator = callback(accumulator, obj[i], i, obj);
-                }
-              }
-              return accumulator;
-            }
-            if (obj === globalThis && callee === setTimeout) {
-              const [callback, delay] = flatArgs;
-              return new Promise(resolve => {
-                setTimeout(() => {
-                  if (callback instanceof RuntimeFunction) {
-                    callback.call(null, []).then(resolve);
-                  } else if (typeof callback === 'function') {
-                    resolve(callback());
-                  }
-                }, delay);
-              });
-            }
             return callee.apply(obj, flatArgs);
           }
           return callee(...flatArgs);
