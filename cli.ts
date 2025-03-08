@@ -6,7 +6,7 @@ import { join } from 'path';
 import { createInterface } from 'readline';
 import pkg from './package.json' with { type: 'json' };
 import { evaluate } from './src/evaluator.ts';
-  
+
 const args = process.argv.slice(2);
 const globalContext = {
   isEvaluate: true,
@@ -16,6 +16,11 @@ const globalContext = {
     warn: console.warn,
     info: console.info,
   },
+  Promise: Promise,
+  setTimeout: setTimeout,
+  clearTimeout: clearTimeout,
+  setInterval: setInterval,
+  clearInterval: clearInterval,
 };
 
 if (args.length === 0) {
@@ -35,10 +40,7 @@ if (args.length === 0) {
   }
 }
 
-/**
- * History handler for the REPL
- */
-class History {
+class ReplHistory {
   private history: string[] = [];
   private position: number = 0;
   private historyFile: string;
@@ -104,12 +106,12 @@ class History {
  * Starts an interactive Read-Eval-Print Loop with standard readline
  */
 async function startREPL() {
-  console.log('\n🦆 Scraggy REPL v' + pkg.version);
+  console.log(`\n🦆 Scraggy REPL v${pkg.version}`);
   console.log('Type .exit or press Ctrl+C to exit\n');
 
   const replContext = { ...globalContext };
 
-  const history = new History();
+  const history = new ReplHistory();
 
   const rl = createInterface({
     input: process.stdin,

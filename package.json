@@ -29,9 +29,17 @@
       "require": "./dist/index.cjs"
     }
   },
+  "bin": {
+    "scraggy": "./dist/cli.js"
+  },
+  "engines": {
+    "bun": ">=1.2.4"
+  },
   "scripts": {
     "test": "bun test",
-    "build": "tsup src/index.ts --dts --format esm,cjs",
+    "build:lib": "tsup src/index.ts --dts --format esm,cjs",
+    "build:cli": "tsup cli.ts --format esm",
+    "build": "bun run build:lib && bun run build:cli",
     "release": "bun run build && bun publish"
   },
   "files": [
@@ -44,6 +52,7 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "prettier": "^3.5.3",
     "tsup": "^8.4.0",
     "typescript": "^5.3.3"
   },
