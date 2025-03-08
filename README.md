@@ -64,8 +64,6 @@ const result = await evaluate({}, code); // returns 120
 - Class declarations and class expressions with inheritance
 - Destructuring assignments (object and array)
 - Super references in class methods
-- Common string and array methods (length, toString, join, slice, etc.)
-- Basic array mutator methods (push, pop, shift, unshift)
 - Destructuring in function parameters
 - Template literals with expression interpolation
 
