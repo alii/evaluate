@@ -35,6 +35,11 @@ export class Scope {
 
     MemoryTracker.getInstance().trackScope(this);
   }
+  
+  // Getter for the parent scope - needed for super references
+  getParent(): Scope | null {
+    return this.parent;
+  }
 
   defineFromObject(scope: Record<string, any>) {
     for (const key in scope) {

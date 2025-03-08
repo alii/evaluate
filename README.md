@@ -46,7 +46,7 @@ const result = await evaluate({}, code); // returns 120
 ## Supported Features
 
 - Literals (numbers, strings, booleans, null, undefined)
-- Variables and scope handling
+- Variables and scope handling (although there's no difference between var, const, let). There is also no hoisting
 - Object and array literals
 - Object property access (both dot notation and bracket notation)
 - Array element access
@@ -60,6 +60,7 @@ const result = await evaluate({}, code); // returns 120
 - while loops
 - try/catch/finally blocks
 - async/await with Promises
+- switch statements
 
 ## Limitations and Unsupported Features
 
@@ -69,7 +70,6 @@ To avoid running into unexpected issues, be aware of the following unsupported f
 
 - Class declarations and class expressions
 - For loops (for, for...in, for...of)
-- Switch statements
 - Module import/export statements
 - Destructuring assignments
 - Optional chaining (?.)
