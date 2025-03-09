@@ -9,6 +9,20 @@ export class ReturnValue extends Error {
 	}
 }
 
+export class BreakValue extends Error {
+	constructor(public label?: string) {
+		super('BreakValue');
+		Object.setPrototypeOf(this, BreakValue.prototype);
+	}
+}
+
+export class ContinueValue extends Error {
+	constructor(public label?: string) {
+		super('ContinueValue');
+		Object.setPrototypeOf(this, ContinueValue.prototype);
+	}
+}
+
 export type FunctionParameter = {
 	name: string;
 	isRest: boolean;

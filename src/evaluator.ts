@@ -1,5 +1,5 @@
 import * as acorn from 'acorn';
-import {ReturnValue, RuntimeFunction} from './runtime.ts';
+import {ReturnValue, BreakValue, ContinueValue, RuntimeFunction} from './runtime.ts';
 import {Scope} from './scope.ts';
 
 export type GlobalObject = Record<string, any>;
@@ -185,6 +185,60 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 	switch (node.type) {
 		case 'ExpressionStatement':
 			return evaluateNode(node.expression, scope);
+            
+		case 'UpdateExpression': {
+			const argument = node.argument;
+			
+			if (argument.type === 'Identifier') {
+				const name = argument.name;
+				let value = scope.lookup(name);
+				
+				if (value === undefined && !scope.lookup(name)) {
+					throw new Error(`Reference Error: ${name} is not defined`);
+				}
+				
+				// Pre-increment/decrement: ++x or --x
+				if (node.prefix) {
+					value = node.operator === '++' ? value + 1 : value - 1;
+					scope.assign(name, value);
+					return value;
+				} 
+				// Post-increment/decrement: x++ or x--
+				else {
+					const oldValue = value;
+					value = node.operator === '++' ? value + 1 : value - 1;
+					scope.assign(name, value);
+					return oldValue;
+				}
+			} else if (argument.type === 'MemberExpression') {
+				const obj = await evaluateNode(argument.object as acorn.Expression, scope);
+				const prop = argument.computed
+					? await evaluateNode(argument.property as acorn.Expression, scope)
+					: (argument.property as acorn.Identifier).name;
+				
+				if (obj === undefined || obj === null) {
+					throw new TypeError(`Cannot update property '${prop}' of ${obj}`);
+				}
+				
+				let value = obj[prop];
+				
+				// Pre-increment/decrement: ++obj.prop or --obj.prop
+				if (node.prefix) {
+					value = node.operator === '++' ? value + 1 : value - 1;
+					obj[prop] = value;
+					return value;
+				} 
+				// Post-increment/decrement: obj.prop++ or obj.prop--
+				else {
+					const oldValue = value;
+					value = node.operator === '++' ? value + 1 : value - 1;
+					obj[prop] = value;
+					return oldValue;
+				}
+			} else {
+				throw new Error(`Unsupported update expression argument: ${argument.type}`);
+			}
+		}
 
 		case 'BlockStatement': {
 			const blockScope = new Scope(scope);
@@ -412,8 +466,22 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 		}
 
 		case 'BreakStatement': {
-			return undefined;
+			// Throw a break exception that will be caught by loop statements
+			// If there is a label, include it so we can break from labeled statements
+			throw new BreakValue(node.label?.name);
 		}
+        
+        case 'ContinueStatement': {
+            // Throw a continue exception that will be caught by loop statements
+            // If there is a label, include it so we can continue specific labeled loops
+            throw new ContinueValue(node.label?.name);
+        }
+        
+        case 'ThrowStatement': {
+            // Throw a JavaScript exception
+            const value = await evaluateNode(node.argument, scope);
+            throw value instanceof Error ? value : new Error(String(value));
+        }
 
 		case 'IfStatement': {
 			const test = await evaluateNode(node.test, scope);
@@ -427,10 +495,36 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 
 		case 'WhileStatement': {
 			let whileResult: any;
-			while (await evaluateNode(node.test, scope)) {
-				whileResult = await evaluateNode(node.body, scope);
+			const label = node.type === 'LabeledStatement' ? node.label?.name : undefined;
+			
+			try {
+				while (await evaluateNode(node.test, scope)) {
+					try {
+						whileResult = await evaluateNode(node.body, scope);
+					} catch (e) {
+						if (e instanceof ContinueValue) {
+							// If this is a labeled continue and the label doesn't match, re-throw
+							if (e.label && e.label !== label) {
+								throw e;
+							}
+							// Otherwise continue to next iteration
+							continue;
+						}
+						throw e;
+					}
+				}
+				return whileResult;
+			} catch (e) {
+				if (e instanceof BreakValue) {
+					// If this is a labeled break and the label doesn't match, re-throw
+					if (e.label && e.label !== label) {
+						throw e;
+					}
+					// Otherwise break out of the loop and return the last result
+					return whileResult;
+				}
+				throw e;
 			}
-			return whileResult;
 		}
 
 		case 'TryStatement': {
@@ -1008,6 +1102,275 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 
 			return result;
 		}
+        
+        case 'ConditionalExpression': {
+            const test = await evaluateNode(node.test, scope);
+            if (test) {
+                return evaluateNode(node.consequent, scope);
+            } else {
+                return evaluateNode(node.alternate, scope);
+            }
+        }
+        
+        case 'ChainExpression': {
+            // Optional chaining (?.)
+            try {
+                return await evaluateNode(node.expression, scope);
+            } catch (error) {
+                // If any error occurs in the chain, just return undefined
+                // This simulates the behavior of optional chaining
+                return undefined;
+            }
+        }
+        
+        case 'SequenceExpression': {
+            // Comma operator: evaluate all expressions and return the last one
+            let result;
+            for (const expression of node.expressions) {
+                result = await evaluateNode(expression, scope);
+            }
+            return result;
+        }
+        
+        case 'ForOfStatement': {
+            // for...of loops
+            const forOfScope = new Scope(scope);
+            try {
+                const iterable = await evaluateNode(node.right, forOfScope);
+                const label = node.type === 'LabeledStatement' ? node.label?.name : undefined;
+                
+                if (iterable === null || iterable === undefined || typeof iterable[Symbol.iterator] !== 'function') {
+                    throw new TypeError('Cannot iterate over non-iterable value');
+                }
+                
+                let lastResult;
+                try {
+                    for (const value of iterable) {
+                        try {
+                            // Handle left side (can be a variable declaration or an assignment pattern)
+                            if (node.left.type === 'VariableDeclaration') {
+                                // Reset the scope before each iteration to avoid variable leaks
+                                const iterationScope = new Scope(forOfScope);
+                                
+                                // Declaration like: for (const x of arr)
+                                const declarator = node.left.declarations[0];  // Assume single declaration
+                                
+                                if (declarator.id.type === 'Identifier') {
+                                    // Simple case: for (const x of arr)
+                                    iterationScope.define(declarator.id.name, value);
+                                } else if (declarator.id.type === 'ObjectPattern') {
+                                    // Destructuring case: for (const {a, b} of arr)
+                                    if (value === null || typeof value !== 'object') {
+                                        throw new TypeError('Cannot destructure non-object in for...of loop');
+                                    }
+                                    
+                                    for (const prop of declarator.id.properties) {
+                                        if (prop.type === 'Property' && prop.value.type === 'Identifier') {
+                                            const key = prop.key.type === 'Identifier' ? prop.key.name : String(prop.key.value);
+                                            iterationScope.define(prop.value.name, value[key]);
+                                        }
+                                    }
+                                } else if (declarator.id.type === 'ArrayPattern') {
+                                    // Destructuring case: for (const [a, b] of arr)
+                                    if (!Array.isArray(value)) {
+                                        throw new TypeError('Cannot destructure non-array in for...of loop');
+                                    }
+                                    
+                                    for (let i = 0; i < declarator.id.elements.length; i++) {
+                                        const element = declarator.id.elements[i];
+                                        if (element && element.type === 'Identifier') {
+                                            iterationScope.define(element.name, value[i]);
+                                        }
+                                    }
+                                }
+                                
+                                // Execute the body with iteration variables
+                                lastResult = await evaluateNode(node.body, iterationScope);
+                            } else if (node.left.type === 'Identifier') {
+                                // Assignment like: for (x of arr)
+                                forOfScope.assign(node.left.name, value);
+                                lastResult = await evaluateNode(node.body, forOfScope);
+                            } else {
+                                throw new Error(`Unsupported for...of left side: ${node.left.type}`);
+                            }
+                        } catch (e) {
+                            if (e instanceof ContinueValue) {
+                                // If this is a labeled continue and the label doesn't match, re-throw
+                                if (e.label && e.label !== label) {
+                                    throw e;
+                                }
+                                // Otherwise continue to next iteration
+                                continue;
+                            }
+                            throw e;
+                        }
+                    }
+                    return lastResult;
+                } catch (e) {
+                    if (e instanceof BreakValue) {
+                        // If this is a labeled break and the label doesn't match, re-throw
+                        if (e.label && e.label !== label) {
+                            throw e;
+                        }
+                        // Otherwise break out of the loop and return the last result
+                        return lastResult;
+                    }
+                    throw e;
+                }
+            } finally {
+                forOfScope.release();
+            }
+        }
+        
+        case 'ForInStatement': {
+            // for...in loops
+            const forInScope = new Scope(scope);
+            try {
+                const right = await evaluateNode(node.right, forInScope);
+                const label = node.type === 'LabeledStatement' ? node.label?.name : undefined;
+                
+                if (right === null || right === undefined) {
+                    throw new TypeError('Cannot iterate over null or undefined');
+                }
+                
+                let lastResult;
+                try {
+                    for (const key in right) {
+                        try {
+                            // Handle left side (can be a variable declaration or an assignment pattern)
+                            if (node.left.type === 'VariableDeclaration') {
+                                // Reset the scope before each iteration to avoid variable leaks
+                                const iterationScope = new Scope(forInScope);
+                                
+                                // Declaration like: for (const x in obj)
+                                const declarator = node.left.declarations[0];  // Assume single declaration
+                                
+                                if (declarator.id.type === 'Identifier') {
+                                    // Simple case: for (const x in obj)
+                                    iterationScope.define(declarator.id.name, key);
+                                } else {
+                                    throw new Error(`Unsupported for...in variable declaration: ${declarator.id.type}`);
+                                }
+                                
+                                // Execute the body with iteration variables
+                                lastResult = await evaluateNode(node.body, iterationScope);
+                            } else if (node.left.type === 'Identifier') {
+                                // Assignment like: for (x in obj)
+                                forInScope.assign(node.left.name, key);
+                                lastResult = await evaluateNode(node.body, forInScope);
+                            } else {
+                                throw new Error(`Unsupported for...in left side: ${node.left.type}`);
+                            }
+                        } catch (e) {
+                            if (e instanceof ContinueValue) {
+                                // If this is a labeled continue and the label doesn't match, re-throw
+                                if (e.label && e.label !== label) {
+                                    throw e;
+                                }
+                                // Otherwise continue to next iteration
+                                continue;
+                            }
+                            throw e;
+                        }
+                    }
+                    return lastResult;
+                } catch (e) {
+                    if (e instanceof BreakValue) {
+                        // If this is a labeled break and the label doesn't match, re-throw
+                        if (e.label && e.label !== label) {
+                            throw e;
+                        }
+                        // Otherwise break out of the loop and return the last result
+                        return lastResult;
+                    }
+                    throw e;
+                }
+            } finally {
+                forInScope.release();
+            }
+        }
+        
+        case 'LabeledStatement': {
+            // Labeled statement (for use with break/continue)
+            try {
+                return await evaluateNode(node.body, scope);
+            } catch (e) {
+                if ((e instanceof BreakValue || e instanceof ContinueValue) && e.label === node.label.name) {
+                    // If this is the label we're targeting, handle it
+                    if (e instanceof BreakValue) {
+                        // For labeled break, just return undefined to exit the statement
+                        return undefined;
+                    } else {
+                        // For labeled continue, re-throw to be handled by the loop
+                        throw e;
+                    }
+                }
+                // Pass through other errors
+                throw e;
+            }
+        }
+        
+        case 'ForStatement': {
+            // Basic for loop: for (init; test; update) { body }
+            const forScope = new Scope(scope);
+            try {
+                // Initialize
+                if (node.init) {
+                    await evaluateNode(node.init, forScope);
+                }
+                
+                let lastResult;
+                const label = node.type === 'LabeledStatement' ? node.label?.name : undefined;
+                
+                try {
+                    // Test, body, update loop
+                    while (true) {
+                        // Check the test condition if it exists
+                        if (node.test) {
+                            const testResult = await evaluateNode(node.test, forScope);
+                            if (!testResult) {
+                                break;
+                            }
+                        }
+                        
+                        try {
+                            // Execute the body
+                            const result = await evaluateNode(node.body, forScope);
+                            lastResult = result;
+                        } catch (e) {
+                            if (e instanceof ContinueValue) {
+                                // If this is a labeled continue and the label doesn't match, re-throw
+                                if (e.label && e.label !== label) {
+                                    throw e;
+                                }
+                                // Skip to the update expression
+                            } else {
+                                throw e;
+                            }
+                        }
+                        
+                        // Execute the update expression
+                        if (node.update) {
+                            await evaluateNode(node.update, forScope);
+                        }
+                    }
+                    
+                    return lastResult;
+                } catch (e) {
+                    if (e instanceof BreakValue) {
+                        // If this is a labeled break and the label doesn't match, re-throw
+                        if (e.label && e.label !== label) {
+                            throw e;
+                        }
+                        // Otherwise break out of the loop and return the last result
+                        return lastResult;
+                    }
+                    throw e;
+                }
+            } finally {
+                forScope.release();
+            }
+        }
 
 		default:
 			throw new Error(`Unsupported node type: ${node.type}`);
@@ -1169,15 +1532,32 @@ async function evaluateObjectExpression(node: acorn.ObjectExpression, scope: Sco
 
 	for (const prop of node.properties) {
 		if (prop.type === 'Property') {
-			let key: string;
-			if (prop.key.type === 'Identifier') {
+			let key: string | number | symbol;
+			
+			if (prop.computed) {
+				// Computed property: { [expr]: value }
+				key = await evaluateNode(prop.key, scope);
+			} else if (prop.key.type === 'Identifier') {
 				key = prop.key.name;
 			} else if (prop.key.type === 'Literal') {
 				key = String(prop.key.value);
 			} else {
 				throw new Error('Unsupported object property key type: ' + prop.key.type);
 			}
-			const value = await evaluateNode(prop.value, scope);
+			
+			// Handle shorthand: { x } instead of { x: x }
+			let value: any;
+			if (prop.shorthand && prop.key.type === 'Identifier') {
+				value = scope.lookup(prop.key.name);
+			} else {
+				value = await evaluateNode(prop.value, scope);
+			}
+			
+			// Handle method definitions: { method() {} }
+			if (prop.method && prop.value.type === 'FunctionExpression') {
+				// Method definitions already handled by evaluateNode for FunctionExpression
+			}
+			
 			result[key] = value;
 		} else {
 			const spreadValue = await evaluateNode(prop.argument, scope);
