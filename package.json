@@ -1,60 +1,61 @@
 {
-  "name": "scraggy",
-  "version": "0.0.11",
-  "type": "module",
-  "description": "A safe JavaScript expression evaluator",
-  "license": "MIT",
-  "types": "./dist/index.d.cts",
-  "main": "./dist/index.cjs",
-  "homepage": "https://github.com/alii/scraggy",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/alii/scraggy.git"
-  },
-  "bugs": {
-    "url": "https://github.com/alii/scraggy/issues"
-  },
-  "keywords": [
-    "javascript",
-    "evaluator",
-    "ast",
-    "eval",
-    "sandbox",
-    "safe-eval"
-  ],
-  "exports": {
-    "./package.json": "./package.json",
-    ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    }
-  },
-  "bin": {
-    "scraggy": "./dist/cli.js"
-  },
-  "engines": {
-    "bun": ">=1.2.4"
-  },
-  "scripts": {
-    "test": "bun test",
-    "build:lib": "tsup src/index.ts --dts --format esm,cjs",
-    "build:cli": "tsup cli/cli.ts --format esm",
-    "build": "bun run build:lib && bun run build:cli",
-    "release": "bun run build && bun publish"
-  },
-  "files": [
-    "README.md",
-    "package.json",
-    "dist"
-  ],
-  "dependencies": {
-    "acorn": "^8.11.3"
-  },
-  "devDependencies": {
-    "@types/bun": "latest",
-    "prettier": "^3.5.3",
-    "tsup": "^8.4.0",
-    "typescript": "^5.3.3"
-  },
-  "packageManager": "bun@1.2.4"
+	"name": "scraggy",
+	"version": "0.0.11",
+	"type": "module",
+	"description": "A safe JavaScript expression evaluator",
+	"license": "MIT",
+	"types": "./dist/index.d.cts",
+	"main": "./dist/index.cjs",
+	"homepage": "https://github.com/alii/scraggy",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/alii/scraggy.git"
+	},
+	"bugs": {
+		"url": "https://github.com/alii/scraggy/issues"
+	},
+	"keywords": [
+		"javascript",
+		"evaluator",
+		"ast",
+		"eval",
+		"sandbox",
+		"safe-eval"
+	],
+	"exports": {
+		"./package.json": "./package.json",
+		".": {
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		}
+	},
+	"bin": {
+		"scraggy": "./dist/cli.js"
+	},
+	"engines": {
+		"bun": ">=1.2.4"
+	},
+	"scripts": {
+		"test": "bun test",
+		"build:lib": "tsup src/index.ts --dts --format esm,cjs",
+		"build:cli": "tsup cli/cli.ts --format esm",
+		"build": "bun run build:lib && bun run build:cli",
+		"release": "bun run build && bun publish"
+	},
+	"files": [
+		"README.md",
+		"package.json",
+		"dist"
+	],
+	"dependencies": {
+		"acorn": "^8.11.3"
+	},
+	"devDependencies": {
+		"@types/bun": "latest",
+		"alistair": "^1.14.4",
+		"prettier": "^3.5.3",
+		"tsup": "^8.4.0",
+		"typescript": "^5.3.3"
+	},
+	"packageManager": "bun@1.2.4"
 }

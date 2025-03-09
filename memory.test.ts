@@ -1,14 +1,14 @@
-import { beforeEach, describe, expect, test } from 'bun:test';
-import { evaluate } from './src/evaluator.ts';
-import { MemoryTracker } from './src/memory.ts';
+import {beforeEach, describe, expect, test} from 'bun:test';
+import {evaluate} from './src/evaluator.ts';
+import {MemoryTracker} from './src/memory.ts';
 
 describe('Memory Management', () => {
-  beforeEach(() => {
-    MemoryTracker.getInstance().reset();
-  });
+	beforeEach(() => {
+		MemoryTracker.getInstance().reset();
+	});
 
-  test('scopes are cleaned up after block execution', async () => {
-    const code = `
+	test('scopes are cleaned up after block execution', async () => {
+		const code = `
       {
         let x = 1; 
         {
@@ -20,28 +20,28 @@ describe('Memory Management', () => {
       }
     `;
 
-    await evaluate({}, code);
-    const stats = MemoryTracker.getInstance().getStats();
-    expect(stats.activeScopes).toBe(0);
-    expect(stats.activeFunctions).toBe(0);
-  });
+		await evaluate({}, code);
+		const stats = MemoryTracker.getInstance().getStats();
+		expect(stats.activeScopes).toBe(0);
+		expect(stats.activeFunctions).toBe(0);
+	});
 
-  test('functions are cleaned up when overwritten', async () => {
-    const code = `
+	test('functions are cleaned up when overwritten', async () => {
+		const code = `
       let f = function() { return 1; };
       f = function() { return 2; };
       f = function() { return 3; };
       f = undefined;
     `;
 
-    await evaluate({}, code);
-    const stats = MemoryTracker.getInstance().getStats();
-    expect(stats.activeFunctions).toBe(0);
-    expect(stats.activeScopes).toBe(0);
-  });
+		await evaluate({}, code);
+		const stats = MemoryTracker.getInstance().getStats();
+		expect(stats.activeFunctions).toBe(0);
+		expect(stats.activeScopes).toBe(0);
+	});
 
-  test('nested functions are cleaned up', async () => {
-    const code = `
+	test('nested functions are cleaned up', async () => {
+		const code = `
       let result;
       {
         let inner1 = function() { return 1; };
@@ -52,14 +52,14 @@ describe('Memory Management', () => {
       }
     `;
 
-    await evaluate({}, code);
-    const stats = MemoryTracker.getInstance().getStats();
-    expect(stats.activeFunctions).toBe(0);
-    expect(stats.activeScopes).toBe(0);
-  });
+		await evaluate({}, code);
+		const stats = MemoryTracker.getInstance().getStats();
+		expect(stats.activeFunctions).toBe(0);
+		expect(stats.activeScopes).toBe(0);
+	});
 
-  test('recursive functions clean up their scopes', async () => {
-    const code = `
+	test('recursive functions clean up their scopes', async () => {
+		const code = `
       let result;
       {
         let factorial = function(n) {
@@ -71,25 +71,25 @@ describe('Memory Management', () => {
       }
     `;
 
-    await evaluate({}, code);
-    const stats = MemoryTracker.getInstance().getStats();
-    expect(stats.activeFunctions).toBe(0);
-    expect(stats.activeScopes).toBe(0);
-  });
+		await evaluate({}, code);
+		const stats = MemoryTracker.getInstance().getStats();
+		expect(stats.activeFunctions).toBe(0);
+		expect(stats.activeScopes).toBe(0);
+	});
 
-  test('async functions clean up properly', async () => {
-    // Create a simple custom Promise implementation
-    class CustomPromise {
-      static resolve(value: unknown) {
-        return {
-          then(callback: (value: unknown) => unknown) {
-            return CustomPromise.resolve(callback(value));
-          }
-        };
-      }
-    }
-    
-    const code = `
+	test('async functions clean up properly', async () => {
+		// Create a simple custom Promise implementation
+		class CustomPromise {
+			static resolve(value: unknown) {
+				return {
+					then(callback: (value: unknown) => unknown) {
+						return CustomPromise.resolve(callback(value));
+					},
+				};
+			}
+		}
+
+		const code = `
       let result;
       {
         let test = function() {
@@ -100,14 +100,14 @@ describe('Memory Management', () => {
       }
     `;
 
-    await evaluate({ Promise: CustomPromise }, code);
-    const stats = MemoryTracker.getInstance().getStats();
-    expect(stats.activeFunctions).toBe(0);
-    expect(stats.activeScopes).toBe(0);
-  });
+		await evaluate({Promise: CustomPromise}, code);
+		const stats = MemoryTracker.getInstance().getStats();
+		expect(stats.activeFunctions).toBe(0);
+		expect(stats.activeScopes).toBe(0);
+	});
 
-  test('complex scope chain cleanup', async () => {
-    const code = `
+	test('complex scope chain cleanup', async () => {
+		const code = `
       let result;
       {
         let createChain = function(depth) {
@@ -125,20 +125,20 @@ describe('Memory Management', () => {
       }
     `;
 
-    await evaluate({}, code);
-    const stats = MemoryTracker.getInstance().getStats();
-    expect(stats.activeFunctions).toBe(0);
-    expect(stats.activeScopes).toBe(0);
-  });
+		await evaluate({}, code);
+		const stats = MemoryTracker.getInstance().getStats();
+		expect(stats.activeFunctions).toBe(0);
+		expect(stats.activeScopes).toBe(0);
+	});
 
-  test('memory usage remains stable under load', async () => {
-    const initialMemory = process.memoryUsage().heapUsed;
-    const iterations = 100;
+	test('memory usage remains stable under load', async () => {
+		const initialMemory = process.memoryUsage().heapUsed;
+		const iterations = 100;
 
-    for (let i = 0; i < iterations; i++) {
-      await evaluate(
-        {},
-        `
+		for (let i = 0; i < iterations; i++) {
+			await evaluate(
+				{},
+				`
         let result;
         {
           let test = function() {
@@ -153,17 +153,17 @@ describe('Memory Management', () => {
           result = test();
           test = undefined;
         }
-      `
-      );
-    }
+      `,
+			);
+		}
 
-    const finalMemory = process.memoryUsage().heapUsed;
-    const memoryDiff = finalMemory - initialMemory;
+		const finalMemory = process.memoryUsage().heapUsed;
+		const memoryDiff = finalMemory - initialMemory;
 
-    expect(memoryDiff).toBeLessThan(1024 * 1024);
+		expect(memoryDiff).toBeLessThan(1024 * 1024);
 
-    const stats = MemoryTracker.getInstance().getStats();
-    expect(stats.activeFunctions).toBe(0);
-    expect(stats.activeScopes).toBe(0);
-  });
+		const stats = MemoryTracker.getInstance().getStats();
+		expect(stats.activeFunctions).toBe(0);
+		expect(stats.activeScopes).toBe(0);
+	});
 });

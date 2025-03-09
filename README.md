@@ -23,13 +23,13 @@ bun install scraggy
 ## Usage
 
 ```typescript
-import { evaluate } from 'scraggy';
+import {evaluate} from 'scraggy';
 
 // Simple evaluation with an empty context
 const result = await evaluate({}, '2 + 3'); // returns 5 (basic arithmetic works with no globals)
 
 // Evaluation with a context object
-const context = { x: 10, y: 20 };
+const context = {x: 10, y: 20};
 const result = await evaluate(context, 'x + y'); // returns 30
 
 // More complex evaluations - no globals needed
