@@ -58,6 +58,7 @@ const result = await evaluate({}, code); // returns 120
 - Unary expressions (+, -, !, ~, typeof)
 - if/else statements
 - while loops
+- for loops (for, for...in, for...of)
 - try/catch/finally blocks
 - async/await with Promises
 - switch statements
@@ -66,6 +67,7 @@ const result = await evaluate({}, code); // returns 120
 - Super references in class methods
 - Destructuring in function parameters
 - Template literals with expression interpolation
+- Optional chaining (?.)
 
 ## Security Features
 
@@ -81,9 +83,7 @@ To avoid running into unexpected issues, be aware of the following unsupported f
 
 ### Unsupported Syntax
 
-- For loops (for, for...in, for...of)
 - Module import/export statements
-- Optional chaining (?.)
 - Private fields (#property)
 - Generator functions and yield
 - BigInt literals
