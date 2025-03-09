@@ -156,6 +156,10 @@ export class RuntimeFunction {
 		const functionScope = new Scope(this.scope);
 
 		try {
+			if (thisArg !== null && thisArg !== undefined) {
+				functionScope.define('this', thisArg);
+			}
+
 			for (let i = 0; i < this.params.length; i++) {
 				const param = this.params[i];
 

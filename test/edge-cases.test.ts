@@ -1,35 +1,35 @@
 import {describe, expect, test} from 'bun:test';
-import {evaluate} from '../src/evaluator.ts';
+import {evaluate} from '../src/evaluator/index.ts';
 
 describe('edge cases', () => {
-  describe('globals and references', () => {
-    test('accessing non-existent variables', async () => {
-      expect(evaluate<any>({}, 'nonExistentVar')).rejects.toThrow();
-    });
+	describe('globals and references', () => {
+		test('accessing non-existent variables', async () => {
+			expect(evaluate<any>({}, 'nonExistentVar')).rejects.toThrow();
+		});
 
-    test('custom globals', async () => {
-      const context = {
-        customGlobal: 'value',
-        customFunction: () => 'called'
-      };
+		test('custom globals', async () => {
+			const context = {
+				customGlobal: 'value',
+				customFunction: () => 'called',
+			};
 
-      expect(await evaluate<string>(context, 'customGlobal')).toBe('value');
-      expect(await evaluate<string>(context, 'customFunction()')).toBe('called');
-    });
+			expect(await evaluate<string>(context, 'customGlobal')).toBe('value');
+			expect(await evaluate<string>(context, 'customFunction()')).toBe('called');
+		});
 
-    test('circular references', async () => {
-      const circular = {};
-      circular.self = circular;
+		test('circular references', async () => {
+			const circular = {} as {self?: typeof circular};
+			circular.self = circular;
 
-      const context = { circular };
-      const result = await evaluate<any>(context, 'circular.self === circular');
-      expect(result).toBe(true);
-    });
-  });
+			const context = {circular};
+			const result = await evaluate<any>(context, 'circular.self === circular');
+			expect(result).toBe(true);
+		});
+	});
 
-  describe('numerical edge cases', () => {
-    test('edge case number values', async () => {
-      const code = `[
+	describe('numerical edge cases', () => {
+		test('edge case number values', async () => {
+			const code = `[
         Number.MAX_SAFE_INTEGER,
         Number.MIN_SAFE_INTEGER,
         Number.MAX_VALUE,
@@ -39,21 +39,21 @@ describe('edge cases', () => {
         Number.NaN,
         1e100
       ]`;
-      
-      const result = await evaluate<any[]>({Number}, code);
-      
-      expect(result[0]).toBe(Number.MAX_SAFE_INTEGER);
-      expect(result[1]).toBe(Number.MIN_SAFE_INTEGER);
-      expect(result[2]).toBe(Number.MAX_VALUE);
-      expect(result[3]).toBe(Number.MIN_VALUE);
-      expect(result[4]).toBe(Number.POSITIVE_INFINITY);
-      expect(result[5]).toBe(Number.NEGATIVE_INFINITY);
-      expect(isNaN(result[6])).toBe(true);
-      expect(result[7]).toBe(1e100);
-    });
 
-    test('number conversions and edge cases', async () => {
-      const code = `[
+			const result = await evaluate<any[]>({Number}, code);
+
+			expect(result[0]).toBe(Number.MAX_SAFE_INTEGER);
+			expect(result[1]).toBe(Number.MIN_SAFE_INTEGER);
+			expect(result[2]).toBe(Number.MAX_VALUE);
+			expect(result[3]).toBe(Number.MIN_VALUE);
+			expect(result[4]).toBe(Number.POSITIVE_INFINITY);
+			expect(result[5]).toBe(Number.NEGATIVE_INFINITY);
+			expect(isNaN(result[6])).toBe(true);
+			expect(result[7]).toBe(1e100);
+		});
+
+		test('number conversions and edge cases', async () => {
+			const code = `[
         +"42",
         +"3.14",
         +true,
@@ -67,57 +67,57 @@ describe('edge cases', () => {
         parseInt("42px"),
         parseFloat("3.14abc")
       ]`;
-      
-      // Without Number/parseInt/parseFloat in context, some of these might fail
-      const globals = { Number, parseInt, parseFloat };
-      const result = await evaluate<any[]>(globals, code);
-      
-      expect(result[0]).toBe(42);
-      expect(result[1]).toBe(3.14);
-      expect(result[2]).toBe(1);
-      expect(result[3]).toBe(0);
-      expect(result[4]).toBe(0);
-      expect(isNaN(result[5])).toBe(true);
-      expect(result[6]).toBe(0);
-      expect(result[7]).toBe(1);
-      expect(isNaN(result[8])).toBe(true);
-      expect(isNaN(result[9])).toBe(true);
-      expect(result[10]).toBe(42);
-      expect(result[11]).toBe(3.14);
-    });
 
-    test('floating point precision issues', async () => {
-      const code = `[
+			// Without Number/parseInt/parseFloat in context, some of these might fail
+			const globals = {Number, parseInt, parseFloat};
+			const result = await evaluate<any[]>(globals, code);
+
+			expect(result[0]).toBe(42);
+			expect(result[1]).toBe(3.14);
+			expect(result[2]).toBe(1);
+			expect(result[3]).toBe(0);
+			expect(result[4]).toBe(0);
+			expect(isNaN(result[5])).toBe(true);
+			expect(result[6]).toBe(0);
+			expect(result[7]).toBe(1);
+			expect(isNaN(result[8])).toBe(true);
+			expect(isNaN(result[9])).toBe(true);
+			expect(result[10]).toBe(42);
+			expect(result[11]).toBe(3.14);
+		});
+
+		test('floating point precision issues', async () => {
+			const code = `[
         0.1 + 0.2,
         0.1 + 0.2 === 0.3,
         Math.abs((0.1 + 0.2) - 0.3) < Number.EPSILON
       ]`;
-      
-      const globals = { Number, Math };
-      const result = await evaluate<any[]>(globals, code);
-      
-      expect(result[0]).not.toBe(0.3); // Due to floating point precision
-      expect(result[1]).toBe(false);
-      expect(result[2]).toBe(true);
-    });
-  });
 
-  describe('function edge cases', () => {
-    test('self-returning functions', async () => {
-      const code = `
+			const globals = {Number, Math};
+			const result = await evaluate<any[]>(globals, code);
+
+			expect(result[0]).not.toBe(0.3); // Due to floating point precision
+			expect(result[1]).toBe(false);
+			expect(result[2]).toBe(true);
+		});
+	});
+
+	describe('function edge cases', () => {
+		test('self-returning functions', async () => {
+			const code = `
         function identity(x) {
           return x;
         }
         
         identity(identity)
       `;
-      
-      const result = await evaluate<Function>({}, code);
-      expect(typeof result).toBe('function');
-    });
 
-    test('recursive functions with memory limits', async () => {
-      const code = `
+			const result = await evaluate<Function>({}, code);
+			expect(typeof result).toBe('function');
+		});
+
+		test('recursive functions with memory limits', async () => {
+			const code = `
         function countDown(n) {
           if (n <= 0) return 0;
           return countDown(n - 1) + 1;
@@ -126,12 +126,12 @@ describe('edge cases', () => {
         // A reasonable depth that shouldn't cause stack overflow
         countDown(100)
       `;
-      
-      expect(await evaluate<number>({}, code)).toBe(100);
-    });
 
-    test('immediately invoked function expressions (IIFE)', async () => {
-      const code = `
+			expect(await evaluate<number>({}, code)).toBe(100);
+		});
+
+		test('immediately invoked function expressions (IIFE)', async () => {
+			const code = `
         const result = (function() {
           let hidden = 'hidden'; // Changed from 'private' which is a reserved word
           return {
@@ -143,12 +143,12 @@ describe('edge cases', () => {
         result.setPrivate('modified');
         result.getPrivate()
       `;
-      
-      expect(await evaluate<string>({}, code)).toBe('modified');
-    });
 
-    test('higher order functions', async () => {
-      const code = `
+			expect(await evaluate<string>({}, code)).toBe('modified');
+		});
+
+		test('higher order functions', async () => {
+			const code = `
         function createAdder(a) {
           return function(b) {
             return a + b;
@@ -158,12 +158,12 @@ describe('edge cases', () => {
         const add5 = createAdder(5);
         [add5(10), add5(20)]
       `;
-      
-      expect(await evaluate<number[]>({}, code)).toEqual([15, 25]);
-    });
 
-    test('function hoisting', async () => {
-      const code = `
+			expect(await evaluate<number[]>({}, code)).toEqual([15, 25]);
+		});
+
+		test('function hoisting', async () => {
+			const code = `
         // We can't do true hoisting with the evaluator, so simulate it
         function hoisted() {
           return 'I am hoisted';
@@ -172,12 +172,12 @@ describe('edge cases', () => {
         const result = hoisted();
         result
       `;
-      
-      expect(await evaluate<string>({}, code)).toBe('I am hoisted');
-    });
 
-    test('function expression vs declaration', async () => {
-      const code = `
+			expect(await evaluate<string>({}, code)).toBe('I am hoisted');
+		});
+
+		test('function expression vs declaration', async () => {
+			const code = `
         // This should fail as expressions are not hoisted
         let result;
         try {
@@ -192,14 +192,14 @@ describe('edge cases', () => {
         
         [result, notHoisted()]
       `;
-      
-      expect(await evaluate<string[]>({Error}, code)).toEqual(['error', 'I am not hoisted']);
-    });
-  });
 
-  describe('scope and closure cases', () => {
-    test.skip('closure capturing changing variables', async () => {
-      const code = `
+			expect(await evaluate<string[]>({Error}, code)).toEqual(['error', 'I am not hoisted']);
+		});
+	});
+
+	describe('scope and closure cases', () => {
+		test.skip('closure capturing changing variables', async () => {
+			const code = `
         function createFunctions() {
           let funcs = [];
           
@@ -213,12 +213,12 @@ describe('edge cases', () => {
         const functions = createFunctions();
         [functions[0](), functions[1](), functions[2]()]
       `;
-      
-      expect(await evaluate<number[]>({}, code)).toEqual([0, 1, 2]);
-    });
 
-    test('variable shadowing', async () => {
-      const code = `
+			expect(await evaluate<number[]>({}, code)).toEqual([0, 1, 2]);
+		});
+
+		test('variable shadowing', async () => {
+			const code = `
         const x = 'global';
         
         function outer() {
@@ -234,12 +234,12 @@ describe('edge cases', () => {
         
         [x, ...outer()]
       `;
-      
-      expect(await evaluate<string[]>({}, code)).toEqual(['global', 'outer', 'inner']);
-    });
 
-    test('closure over parameters', async () => {
-      const code = `
+			expect(await evaluate<string[]>({}, code)).toEqual(['global', 'outer', 'inner']);
+		});
+
+		test('closure over parameters', async () => {
+			const code = `
         function multiplier(factor) {
           return function(number) {
             return number * factor;
@@ -251,12 +251,12 @@ describe('edge cases', () => {
         
         [double(5), triple(5)]
       `;
-      
-      expect(await evaluate<number[]>({}, code)).toEqual([10, 15]);
-    });
 
-    test.skip('capturing this context in functions', async () => {
-      const code = `
+			expect(await evaluate<number[]>({}, code)).toEqual([10, 15]);
+		});
+
+		test.skip('capturing this context in functions', async () => {
+			const code = `
         const obj = {
           value: 42,
           getValue: function() {
@@ -276,14 +276,14 @@ describe('edge cases', () => {
           nested.getValue.call(nested)
         ]
       `;
-      
-      expect(await evaluate<number[]>({}, code)).toEqual([42, 43]);
-    });
-  });
 
-  describe('complex expressions and patterns', () => {
-    test('nested ternary operators', async () => {
-      const code = `
+			expect(await evaluate<number[]>({}, code)).toEqual([42, 43]);
+		});
+	});
+
+	describe('complex expressions and patterns', () => {
+		test('nested ternary operators', async () => {
+			const code = `
         function getCategory(age) {
           return age < 13 ? 'child' 
                  : age < 18 ? 'teenager'
@@ -293,12 +293,12 @@ describe('edge cases', () => {
         
         [getCategory(8), getCategory(15), getCategory(30), getCategory(70)]
       `;
-      
-      expect(await evaluate<string[]>({}, code)).toEqual(['child', 'teenager', 'adult', 'senior']);
-    });
 
-    test('complex short-circuit evaluation', async () => {
-      const code = `
+			expect(await evaluate<string[]>({}, code)).toEqual(['child', 'teenager', 'adult', 'senior']);
+		});
+
+		test('complex short-circuit evaluation', async () => {
+			const code = `
         // Use an object to store operations instead of array
         const state = { operations: [] };
         
@@ -321,18 +321,18 @@ describe('edge cases', () => {
           result4: result4 
         })
       `;
-      
-      const result = await evaluate<any>({}, code);
-      
-      expect(result.operations).toEqual(['A', 'B', 'C', 'D', 'G', 'H', 'J']);
-      expect(result.result1).toBe('C');
-      expect(result.result2).toBe('D');
-      expect(result.result3).toBe('H');
-      expect(result.result4).toBe('J');
-    });
 
-    test.skip('chained array and object operations', async () => {
-      const code = `
+			const result = await evaluate<any>({}, code);
+
+			expect(result.operations).toEqual(['A', 'B', 'C', 'D', 'G', 'H', 'J']);
+			expect(result.result1).toBe('C');
+			expect(result.result2).toBe('D');
+			expect(result.result3).toBe('H');
+			expect(result.result4).toBe('J');
+		});
+
+		test.skip('chained array and object operations', async () => {
+			const code = `
         const users = [
           { name: 'Alice', age: 30, hobbies: ['reading', 'hiking'] },
           { name: 'Bob', age: 25, hobbies: ['gaming', 'cooking'] },
@@ -353,15 +353,15 @@ describe('edge cases', () => {
         
         result
       `;
-      
-      expect(await evaluate<any>({}, code)).toEqual({
-        'Alice (age: 30)': 'reading, hiking',
-        'Charlie (age: 35)': 'swimming, photography'
-      });
-    });
 
-    test('regex processing', async () => {
-      const code = `
+			expect(await evaluate<any>({}, code)).toEqual({
+				'Alice (age: 30)': 'reading, hiking',
+				'Charlie (age: 35)': 'swimming, photography',
+			});
+		});
+
+		test('regex processing', async () => {
+			const code = `
         function extractInfo(text) {
           const nameMatch = /Name: ([\\w\\s]+)/.exec(text);
           const ageMatch = /Age: (\\d+)/.exec(text);
@@ -376,18 +376,18 @@ describe('edge cases', () => {
         
         extractInfo('Name: John Doe, Age: 42, Email: john@example.com')
       `;
-      
-      expect(await evaluate<any>({parseInt}, code)).toEqual({
-        name: 'John Doe',
-        age: 42,
-        email: 'john@example.com'
-      });
-    });
-  });
 
-  describe('runtime error handling', () => {
-    test.skip('accessing properties of undefined', async () => {
-      const code = `
+			expect(await evaluate<any>({parseInt}, code)).toEqual({
+				name: 'John Doe',
+				age: 42,
+				email: 'john@example.com',
+			});
+		});
+	});
+
+	describe('runtime error handling', () => {
+		test.skip('accessing properties of undefined', async () => {
+			const code = `
         function safeAccess(obj, path) {
           try {
             // This will throw if obj is undefined or doesn't have the properties
@@ -405,14 +405,12 @@ describe('edge cases', () => {
           safeAccess(undefined, 'user.name')
         ]
       `;
-      
-      expect(await evaluate<any[]>({Error}, code)).toEqual([
-        'Alice', null, null, null, null
-      ]);
-    });
 
-    test('div by zero and other math errors', async () => {
-      const code = `
+			expect(await evaluate<any[]>({Error}, code)).toEqual(['Alice', null, null, null, null]);
+		});
+
+		test('div by zero and other math errors', async () => {
+			const code = `
         function safeDivide(a, b) {
           if (b === 0) return Infinity;
           return a / b;
@@ -425,23 +423,23 @@ describe('edge cases', () => {
           Math.log(-1)
         ]
       `;
-      
-      const globals = { 
-        Math, 
-        Infinity, 
-        NaN,
-        isNaN
-      };
-      const result = await evaluate<any[]>(globals, code);
-      
-      expect(result[0]).toBe(5);
-      expect(result[1]).toBe(Infinity);
-      expect(isNaN(result[2])).toBe(true);
-      expect(isNaN(result[3])).toBe(true);
-    });
 
-    test.skip('error stack inspection', async () => {
-      const code = `
+			const globals = {
+				Math,
+				Infinity,
+				NaN,
+				isNaN,
+			};
+			const result = await evaluate<any[]>(globals, code);
+
+			expect(result[0]).toBe(5);
+			expect(result[1]).toBe(Infinity);
+			expect(isNaN(result[2])).toBe(true);
+			expect(isNaN(result[3])).toBe(true);
+		});
+
+		test.skip('error stack inspection', async () => {
+			const code = `
         function level3() {
           try {
             throw new Error('Error at level 3');
@@ -460,15 +458,15 @@ describe('edge cases', () => {
         
         level1()
       `;
-      
-      // This might fail if stack inspection is not supported
-      expect(evaluate<boolean>({Error}, code)).resolves.toBeTruthy();
-    });
-  });
 
-  describe('memory and resource usage', () => {
-    test('large object creation', async () => {
-      const code = `
+			// This might fail if stack inspection is not supported
+			expect(evaluate<boolean>({Error}, code)).resolves.toBeTruthy();
+		});
+	});
+
+	describe('memory and resource usage', () => {
+		test('large object creation', async () => {
+			const code = `
         const createLargeObject = (size) => {
           const obj = {};
           for (let i = 0; i < size; i++) {
@@ -480,12 +478,12 @@ describe('edge cases', () => {
         const largeObj = createLargeObject(1000);
         Object.keys(largeObj).length
       `;
-      
-      expect(await evaluate<number>({Object}, code)).toBe(1000);
-    });
 
-    test.skip('large array operations', async () => {
-      const code = `
+			expect(await evaluate<number>({Object}, code)).toBe(1000);
+		});
+
+		test.skip('large array operations', async () => {
+			const code = `
         const arr = Array.from({ length: 10000 }, (_, i) => i);
         
         // Basic operations on the large array
@@ -494,14 +492,12 @@ describe('edge cases', () => {
         
         [arr.length, sum, evenCount]
       `;
-      
-      expect(await evaluate<number[]>({Array}, code)).toEqual([
-        10000, 49995000, 5000
-      ]);
-    });
 
-    test('nested function calls with growing data', async () => {
-      const code = `
+			expect(await evaluate<number[]>({Array}, code)).toEqual([10000, 49995000, 5000]);
+		});
+
+		test('nested function calls with growing data', async () => {
+			const code = `
         function appendLayer(arr, depth) {
           if (depth <= 0) return arr;
           
@@ -515,24 +511,24 @@ describe('edge cases', () => {
         const result = appendLayer([], 20);
         [result.length, result.reduce((sum, n) => sum + n, 0)]
       `;
-      
-      expect(await evaluate<number[]>({}, code)).toEqual([20, 210]); // Sum of numbers 1-20 = 210
-    });
-  });
 
-  describe('exotic syntax and patterns', () => {
-    test('comma operator in expressions', async () => {
-      const code = `
+			expect(await evaluate<number[]>({}, code)).toEqual([20, 210]); // Sum of numbers 1-20 = 210
+		});
+	});
+
+	describe('exotic syntax and patterns', () => {
+		test('comma operator in expressions', async () => {
+			const code = `
         let x = 0;
         const result = (x = 1, x + 1, x * 2, x + 5);
         [x, result]
       `;
-      
-      expect(await evaluate<number[]>({}, code)).toEqual([1, 6]);
-    });
 
-    test('labeled statements and breaking from loops', async () => {
-      const code = `
+			expect(await evaluate<number[]>({}, code)).toEqual([1, 6]);
+		});
+
+		test('labeled statements and breaking from loops', async () => {
+			const code = `
         function findInMatrix(matrix, target) {
           let result = null;
           
@@ -562,16 +558,16 @@ describe('edge cases', () => {
           findInMatrix(matrix, 10)
         ]
       `;
-      
-      expect(await evaluate<any[]>({}, code)).toEqual([
-        [1, 1],  // position of 5
-        [2, 2],  // position of 9
-        null     // not found
-      ]);
-    });
 
-    test('object property access edge cases', async () => {
-      const code = `
+			expect(await evaluate<any[]>({}, code)).toEqual([
+				[1, 1], // position of 5
+				[2, 2], // position of 9
+				null, // not found
+			]);
+		});
+
+		test('object property access edge cases', async () => {
+			const code = `
         const obj = {
           'normal-key': 1,
           'key with spaces': 2,
@@ -588,14 +584,12 @@ describe('edge cases', () => {
           Object.getOwnPropertySymbols(obj).length > 0
         ]
       `;
-      
-      expect(await evaluate<any[]>({Object, Symbol}, code)).toEqual([
-        1, 2, 3, 4, true
-      ]);
-    });
 
-    test.skip('unicode handling', async () => {
-      const code = `
+			expect(await evaluate<any[]>({Object, Symbol}, code)).toEqual([1, 2, 3, 4, true]);
+		});
+
+		test.skip('unicode handling', async () => {
+			const code = `
         const text = 'Hello, 世界!';
         
         [
@@ -606,14 +600,14 @@ describe('edge cases', () => {
           [...text].join(' ')
         ]
       `;
-      
-      expect(await evaluate<any[]>({Array}, code)).toEqual([
-        10,         // UTF-16 length
-        '世',        // Character at index 7
-        19990,      // Char code at index 7
-        10,         // Spread length
-        'H e l l o ,   世 界 !'
-      ]);
-    });
-  });
+
+			expect(await evaluate<any[]>({Array}, code)).toEqual([
+				10, // UTF-16 length
+				'世', // Character at index 7
+				19990, // Char code at index 7
+				10, // Spread length
+				'H e l l o ,   世 界 !',
+			]);
+		});
+	});
 });

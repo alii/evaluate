@@ -1,5 +1,5 @@
 import { describe, expect, test, mock } from 'bun:test';
-import { evaluate } from '../src/evaluator.ts';
+import { evaluate } from '../src/evaluator/index.ts';
 
 describe('Fetch API support', () => {
   // Mock global objects needed for fetch tests

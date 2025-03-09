@@ -1,5 +1,5 @@
 import {describe, expect, test} from 'bun:test';
-import {evaluate} from '../src/evaluator.ts';
+import {evaluate} from '../src/evaluator/index.ts';
 
 describe('Error Reporting', () => {
 	test('reports syntax errors with line and column indicators', async () => {

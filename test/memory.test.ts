@@ -1,5 +1,5 @@
 import {beforeEach, describe, expect, test} from 'bun:test';
-import {evaluate} from '../src/evaluator.ts';
+import {evaluate} from '../src/evaluator/index.ts';
 import {MemoryTracker} from '../src/memory.ts';
 
 describe('Memory Management', () => {

@@ -1,22 +1,22 @@
 import {describe, expect, test} from 'bun:test';
-import {evaluate} from '../src/evaluator.ts';
+import {evaluate} from '../src/evaluator/index.ts';
 
 describe('modern JavaScript syntax', () => {
-  describe('arrow functions', () => {
-    test('basic arrow functions', async () => {
-      const code = `
+	describe('arrow functions', () => {
+		test('basic arrow functions', async () => {
+			const code = `
         const add = (a, b) => a + b;
         const square = x => x * x;
         const getObj = () => ({ key: 'value' });
         
         [add(2, 3), square(4), getObj().key]
       `;
-      
-      expect(await evaluate<any[]>({}, code)).toEqual([5, 16, 'value']);
-    });
 
-    test('arrow functions with block bodies', async () => {
-      const code = `
+			expect(await evaluate<any[]>({}, code)).toEqual([5, 16, 'value']);
+		});
+
+		test('arrow functions with block bodies', async () => {
+			const code = `
         const sumArray = (arr) => {
           let sum = 0;
           for (let i = 0; i < arr.length; i++) {
@@ -27,27 +27,27 @@ describe('modern JavaScript syntax', () => {
         
         sumArray([1, 2, 3, 4, 5])
       `;
-      
-      expect(await evaluate<number>({}, code)).toBe(15);
-    });
 
-    test.skip('arrow functions with implicit returns', async () => {
-      const code = `
+			expect(await evaluate<number>({}, code)).toBe(15);
+		});
+
+		test.skip('arrow functions with implicit returns', async () => {
+			const code = `
         const numbers = [1, 2, 3, 4, 5];
         const doubled = numbers.map(n => n * 2);
         const filtered = numbers.filter(n => n % 2 === 0);
         
         [doubled, filtered]
       `;
-      
-      expect(await evaluate<number[][]>({Array}, code)).toEqual([
-        [2, 4, 6, 8, 10], 
-        [2, 4]
-      ]);
-    });
 
-    test('arrow functions with destructuring', async () => {
-      const code = `
+			expect(await evaluate<number[][]>({Array}, code)).toEqual([
+				[2, 4, 6, 8, 10],
+				[2, 4],
+			]);
+		});
+
+		test('arrow functions with destructuring', async () => {
+			const code = `
         const getFullName = ({firstName, lastName}) => \`\${firstName} \${lastName}\`;
         const getPerson = ([name, age]) => ({ name, age });
         
@@ -57,12 +57,12 @@ describe('modern JavaScript syntax', () => {
           getPerson(['Alice', 30]).age
         ]
       `;
-      
-      expect(await evaluate<any[]>({}, code)).toEqual(['John Doe', 'Alice', 30]);
-    });
 
-    test('arrow functions with rest parameters', async () => {
-      const code = `
+			expect(await evaluate<any[]>({}, code)).toEqual(['John Doe', 'Alice', 30]);
+		});
+
+		test('arrow functions with rest parameters', async () => {
+			const code = `
         const sum = (...numbers) => numbers.reduce((total, n) => total + n, 0);
         const joinWithFirst = (separator, ...strings) => strings.join(separator);
         
@@ -71,12 +71,12 @@ describe('modern JavaScript syntax', () => {
           joinWithFirst('-', 'apple', 'banana', 'cherry')
         ]
       `;
-      
-      expect(await evaluate<any[]>({}, code)).toEqual([15, 'apple-banana-cherry']);
-    });
 
-    test('arrow functions with higher-order functions', async () => {
-      const code = `
+			expect(await evaluate<any[]>({}, code)).toEqual([15, 'apple-banana-cherry']);
+		});
+
+		test('arrow functions with higher-order functions', async () => {
+			const code = `
         const createMultiplier = factor => number => number * factor;
         const double = createMultiplier(2);
         const triple = createMultiplier(3);
@@ -86,14 +86,14 @@ describe('modern JavaScript syntax', () => {
           triple(5)
         ]
       `;
-      
-      expect(await evaluate<number[]>({}, code)).toEqual([10, 15]);
-    });
-  });
 
-  describe('for...of loops', () => {
-    test('basic for...of with arrays', async () => {
-      const code = `
+			expect(await evaluate<number[]>({}, code)).toEqual([10, 15]);
+		});
+	});
+
+	describe('for...of loops', () => {
+		test('basic for...of with arrays', async () => {
+			const code = `
         const numbers = [1, 2, 3, 4, 5];
         let sum = 0;
         
@@ -103,12 +103,12 @@ describe('modern JavaScript syntax', () => {
         
         sum
       `;
-      
-      expect(await evaluate<number>({}, code)).toBe(15);
-    });
 
-    test('for...of with strings', async () => {
-      const code = `
+			expect(await evaluate<number>({}, code)).toBe(15);
+		});
+
+		test('for...of with strings', async () => {
+			const code = `
         const str = 'hello';
         let reversed = '';
         
@@ -118,12 +118,12 @@ describe('modern JavaScript syntax', () => {
         
         reversed
       `;
-      
-      expect(await evaluate<string>({}, code)).toBe('olleh');
-    });
 
-    test('for...of with break and continue', async () => {
-      const code = `
+			expect(await evaluate<string>({}, code)).toBe('olleh');
+		});
+
+		test('for...of with break and continue', async () => {
+			const code = `
         const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         let oddSum = 0;
         let evenSum = 0;
@@ -152,12 +152,12 @@ describe('modern JavaScript syntax', () => {
         
         [oddSum, evenSum]
       `;
-      
-      expect(await evaluate<number[]>({}, code)).toEqual([9, 30]);
-    });
 
-    test('nested for...of loops', async () => {
-      const code = `
+			expect(await evaluate<number[]>({}, code)).toEqual([9, 30]);
+		});
+
+		test('nested for...of loops', async () => {
+			const code = `
         const matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
         let sum = 0;
         
@@ -169,12 +169,12 @@ describe('modern JavaScript syntax', () => {
         
         sum
       `;
-      
-      expect(await evaluate<number>({}, code)).toBe(45);
-    });
 
-    test('for...of with destructuring', async () => {
-      const code = `
+			expect(await evaluate<number>({}, code)).toBe(45);
+		});
+
+		test('for...of with destructuring', async () => {
+			const code = `
         const people = [
           { name: 'Alice', age: 30 },
           { name: 'Bob', age: 25 },
@@ -189,18 +189,18 @@ describe('modern JavaScript syntax', () => {
         
         result
       `;
-      
-      expect(await evaluate<string[]>({}, code)).toEqual([
-        'Alice is 30 years old',
-        'Bob is 25 years old',
-        'Charlie is 35 years old'
-      ]);
-    });
-  });
 
-  describe('for...in loops', () => {
-    test('for...in with objects', async () => {
-      const code = `
+			expect(await evaluate<string[]>({}, code)).toEqual([
+				'Alice is 30 years old',
+				'Bob is 25 years old',
+				'Charlie is 35 years old',
+			]);
+		});
+	});
+
+	describe('for...in loops', () => {
+		test('for...in with objects', async () => {
+			const code = `
         const person = {
           name: 'Alice',
           age: 30,
@@ -217,15 +217,15 @@ describe('modern JavaScript syntax', () => {
         
         [keys.sort(), values.sort()]
       `;
-      
-      expect(await evaluate<any[]>({}, code)).toEqual([
-        ['age', 'city', 'name'],
-        [30, 'Alice', 'New York']
-      ]);
-    });
 
-    test('for...in with arrays', async () => {
-      const code = `
+			expect(await evaluate<any[]>({}, code)).toEqual([
+				['age', 'city', 'name'],
+				[30, 'Alice', 'New York'],
+			]);
+		});
+
+		test('for...in with arrays', async () => {
+			const code = `
         const arr = ['apple', 'banana', 'cherry'];
         let indices = [];
         
@@ -235,12 +235,12 @@ describe('modern JavaScript syntax', () => {
         
         indices
       `;
-      
-      expect(await evaluate<string[]>({}, code)).toEqual(['0', '1', '2']);
-    });
 
-    test('for...in with inheritance', async () => {
-      const code = `
+			expect(await evaluate<string[]>({}, code)).toEqual(['0', '1', '2']);
+		});
+
+		test('for...in with inheritance', async () => {
+			const code = `
         function getOwnKeys(obj) {
           const keys = [];
           
@@ -256,12 +256,12 @@ describe('modern JavaScript syntax', () => {
         const child = { a: 1, b: 2 };
         getOwnKeys(child)
       `;
-      
-      expect(await evaluate<string[]>({Object}, code)).toEqual(['a', 'b']);
-    });
 
-    test('for...in with break and continue', async () => {
-      const code = `
+			expect(await evaluate<string[]>({Object}, code)).toEqual(['a', 'b']);
+		});
+
+		test('for...in with break and continue', async () => {
+			const code = `
         const obj = {
           a: 1,
           b: 2,
@@ -286,14 +286,14 @@ describe('modern JavaScript syntax', () => {
         
         sum
       `;
-      
-      expect(await evaluate<number>({}, code)).toBe(4); // a + c
-    });
-  });
 
-  describe('shorthand property names', () => {
-    test('basic object shorthand', async () => {
-      const code = `
+			expect(await evaluate<number>({}, code)).toBe(4); // a + c
+		});
+	});
+
+	describe('shorthand property names', () => {
+		test('basic object shorthand', async () => {
+			const code = `
         const name = 'Alice';
         const age = 30;
         
@@ -301,12 +301,12 @@ describe('modern JavaScript syntax', () => {
         
         [person.name, person.age]
       `;
-      
-      expect(await evaluate<any[]>({}, code)).toEqual(['Alice', 30]);
-    });
 
-    test('mixed shorthand and regular properties', async () => {
-      const code = `
+			expect(await evaluate<any[]>({}, code)).toEqual(['Alice', 30]);
+		});
+
+		test('mixed shorthand and regular properties', async () => {
+			const code = `
         const x = 1;
         const y = 2;
         
@@ -319,12 +319,12 @@ describe('modern JavaScript syntax', () => {
         
         [obj.x, obj.y, obj.z, obj.sum]
       `;
-      
-      expect(await evaluate<number[]>({}, code)).toEqual([1, 2, 3, 6]);
-    });
 
-    test('shorthand methods', async () => {
-      const code = `
+			expect(await evaluate<number[]>({}, code)).toEqual([1, 2, 3, 6]);
+		});
+
+		test('shorthand methods', async () => {
+			const code = `
         const calculator = {
           add(a, b) {
             return a + b;
@@ -336,12 +336,12 @@ describe('modern JavaScript syntax', () => {
         
         [calculator.add(2, 3), calculator.multiply(2, 3)]
       `;
-      
-      expect(await evaluate<number[]>({}, code)).toEqual([5, 6]);
-    });
 
-    test('shorthand with computed properties', async () => {
-      const code = `
+			expect(await evaluate<number[]>({}, code)).toEqual([5, 6]);
+		});
+
+		test('shorthand with computed properties', async () => {
+			const code = `
         const prop = 'name';
         const value = 'Alice';
         
@@ -352,12 +352,12 @@ describe('modern JavaScript syntax', () => {
         
         [obj.name, obj.nameLength]
       `;
-      
-      expect(await evaluate<any[]>({}, code)).toEqual(['Alice', 5]);
-    });
 
-    test('shorthand in restructuring assignments', async () => {
-      const code = `
+			expect(await evaluate<any[]>({}, code)).toEqual(['Alice', 5]);
+		});
+
+		test('shorthand in restructuring assignments', async () => {
+			const code = `
         const person = { name: 'Alice', age: 30 };
         const { name, age } = person;
         
@@ -365,72 +365,72 @@ describe('modern JavaScript syntax', () => {
         
         [newPerson.name, newPerson.age, newPerson.city]
       `;
-      
-      expect(await evaluate<any[]>({}, code)).toEqual(['Alice', 30, 'New York']);
-    });
-  });
 
-  describe('array and object destructuring', () => {
-    test('basic array destructuring', async () => {
-      const code = `
+			expect(await evaluate<any[]>({}, code)).toEqual(['Alice', 30, 'New York']);
+		});
+	});
+
+	describe('array and object destructuring', () => {
+		test('basic array destructuring', async () => {
+			const code = `
         const nums = [1, 2, 3, 4, 5];
         const [first, second, ...rest] = nums;
         
         [first, second, rest]
       `;
-      
-      expect(await evaluate<any[]>({}, code)).toEqual([1, 2, [3, 4, 5]]);
-    });
 
-    test('array destructuring with skipped elements', async () => {
-      const code = `
+			expect(await evaluate<any[]>({}, code)).toEqual([1, 2, [3, 4, 5]]);
+		});
+
+		test('array destructuring with skipped elements', async () => {
+			const code = `
         const values = [1, 2, 3, 4, 5];
         const [first, , third, , fifth] = values;
         
         [first, third, fifth]
       `;
-      
-      expect(await evaluate<number[]>({}, code)).toEqual([1, 3, 5]);
-    });
 
-    test('array destructuring in function parameters', async () => {
-      const code = `
+			expect(await evaluate<number[]>({}, code)).toEqual([1, 3, 5]);
+		});
+
+		test('array destructuring in function parameters', async () => {
+			const code = `
         function processPoint([x, y]) {
           return x * y;
         }
         
         processPoint([5, 10])
       `;
-      
-      expect(await evaluate<number>({}, code)).toBe(50);
-    });
 
-    test('nested array destructuring', async () => {
-      const code = `
+			expect(await evaluate<number>({}, code)).toBe(50);
+		});
+
+		test('nested array destructuring', async () => {
+			const code = `
         const matrix = [[1, 2], [3, 4]];
         const [[a, b], [c, d]] = matrix;
         
         [a, b, c, d]
       `;
-      
-      expect(await evaluate<number[]>({}, code)).toEqual([1, 2, 3, 4]);
-    });
 
-    test('basic object destructuring', async () => {
-      const code = `
+			expect(await evaluate<number[]>({}, code)).toEqual([1, 2, 3, 4]);
+		});
+
+		test('basic object destructuring', async () => {
+			const code = `
         const person = { name: 'Alice', age: 30, city: 'New York' };
         const { name, age } = person;
         
         [name, age]
       `;
-      
-      expect(await evaluate<any[]>({}, code)).toEqual(['Alice', 30]);
-    });
 
-    test('object destructuring with renamed variables', async () => {
-      // Note: This is attempting to test { name: firstName } syntax
-      // which is likely not supported in the evaluator (assuming based on test on line 792)
-      const code = `
+			expect(await evaluate<any[]>({}, code)).toEqual(['Alice', 30]);
+		});
+
+		test('object destructuring with renamed variables', async () => {
+			// Note: This is attempting to test { name: firstName } syntax
+			// which is likely not supported in the evaluator (assuming based on test on line 792)
+			const code = `
         const person = { name: 'Alice', age: 30 };
         
         // Try a more direct approach without renaming
@@ -439,12 +439,12 @@ describe('modern JavaScript syntax', () => {
         
         [firstName, age]
       `;
-      
-      expect(await evaluate<any[]>({}, code)).toEqual(['Alice', 30]);
-    });
 
-    test.skip('nested object destructuring', async () => {
-      const code = `
+			expect(await evaluate<any[]>({}, code)).toEqual(['Alice', 30]);
+		});
+
+		test.skip('nested object destructuring', async () => {
+			const code = `
         const user = {
           id: 42,
           profile: {
@@ -460,12 +460,12 @@ describe('modern JavaScript syntax', () => {
         
         [name, city]
       `;
-      
-      expect(await evaluate<string[]>({}, code)).toEqual(['Alice', 'New York']);
-    });
 
-    test.skip('mixed object and array destructuring', async () => {
-      const code = `
+			expect(await evaluate<string[]>({}, code)).toEqual(['Alice', 'New York']);
+		});
+
+		test.skip('mixed object and array destructuring', async () => {
+			const code = `
         const data = {
           user: 'Alice',
           scores: [95, 87, 92]
@@ -475,12 +475,12 @@ describe('modern JavaScript syntax', () => {
         
         [user, first, otherScores]
       `;
-      
-      expect(await evaluate<any[]>({}, code)).toEqual(['Alice', 95, [87, 92]]);
-    });
 
-    test('destructuring in loop variables', async () => {
-      const code = `
+			expect(await evaluate<any[]>({}, code)).toEqual(['Alice', 95, [87, 92]]);
+		});
+
+		test('destructuring in loop variables', async () => {
+			const code = `
         const people = [
           { name: 'Alice', age: 30 },
           { name: 'Bob', age: 25 },
@@ -497,17 +497,17 @@ describe('modern JavaScript syntax', () => {
         
         [names, ages]
       `;
-      
-      expect(await evaluate<any[]>({}, code)).toEqual([
-        ['Alice', 'Bob', 'Charlie'],
-        [30, 25, 35]
-      ]);
-    });
-  });
 
-  describe('enhanced object literals', () => {
-    test('computed property names', async () => {
-      const code = `
+			expect(await evaluate<any[]>({}, code)).toEqual([
+				['Alice', 'Bob', 'Charlie'],
+				[30, 25, 35],
+			]);
+		});
+	});
+
+	describe('enhanced object literals', () => {
+		test('computed property names', async () => {
+			const code = `
         const prefix = 'user';
         const id = 42;
         
@@ -518,12 +518,12 @@ describe('modern JavaScript syntax', () => {
         
         [obj.user42, obj.user_43]
       `;
-      
-      expect(await evaluate<string[]>({}, code)).toEqual(['Alice', 'Bob']);
-    });
 
-    test.skip('method properties', async () => {
-      const code = `
+			expect(await evaluate<string[]>({}, code)).toEqual(['Alice', 'Bob']);
+		});
+
+		test.skip('method properties', async () => {
+			const code = `
         const counter = {
           value: 0,
           increment() {
@@ -547,12 +547,12 @@ describe('modern JavaScript syntax', () => {
           counter.reset()
         ]
       `;
-      
-      expect(await evaluate<number[]>({}, code)).toEqual([1, 2, 1, 0]);
-    });
 
-    test.skip('getter and setter properties', async () => {
-      const code = `
+			expect(await evaluate<number[]>({}, code)).toEqual([1, 2, 1, 0]);
+		});
+
+		test.skip('getter and setter properties', async () => {
+			const code = `
         const person = {
           _name: '',
           get name() {
@@ -575,13 +575,13 @@ describe('modern JavaScript syntax', () => {
         
         results
       `;
-      
-      // This will likely fail if getters/setters aren't supported
-      expect(evaluate<string[]>({}, code)).rejects.toThrow();
-    });
 
-    test.skip('combining shorthand, computed and method properties', async () => {
-      const code = `
+			// This will likely fail if getters/setters aren't supported
+			expect(evaluate<string[]>({}, code)).rejects.toThrow();
+		});
+
+		test.skip('combining shorthand, computed and method properties', async () => {
+			const code = `
         const id = 'user_id';
         const displayName = 'Alice';
         
@@ -595,14 +595,14 @@ describe('modern JavaScript syntax', () => {
         
         [user.user_id, user.displayName, user.getInfo()]
       `;
-      
-      expect(await evaluate<any[]>({}, code)).toEqual([42, 'Alice', 'Alice (42)']);
-    });
-  });
 
-  describe('default parameters', () => {
-    test.skip('basic default parameters', async () => {
-      const code = `
+			expect(await evaluate<any[]>({}, code)).toEqual([42, 'Alice', 'Alice (42)']);
+		});
+	});
+
+	describe('default parameters', () => {
+		test.skip('basic default parameters', async () => {
+			const code = `
         // Note: Default parameters aren't supported yet
         function greet(name) {
           name = name || 'Guest';
@@ -611,12 +611,12 @@ describe('modern JavaScript syntax', () => {
         
         [greet('Alice'), greet()]
       `;
-      
-      expect(await evaluate<string[]>({}, code)).toEqual(['Hello, Alice', 'Hello, Guest']);
-    });
 
-    test.skip('multiple default parameters', async () => {
-      const code = `
+			expect(await evaluate<string[]>({}, code)).toEqual(['Hello, Alice', 'Hello, Guest']);
+		});
+
+		test.skip('multiple default parameters', async () => {
+			const code = `
         // Simulation of default parameters
         function createPerson(name, age, city) {
           name = name || 'Anonymous';
@@ -632,12 +632,12 @@ describe('modern JavaScript syntax', () => {
           createPerson().city
         ]
       `;
-      
-      expect(await evaluate<any[]>({}, code)).toEqual(['Alice', 0, 'Unknown']);
-    });
 
-    test.skip('complex default values', async () => {
-      const code = `
+			expect(await evaluate<any[]>({}, code)).toEqual(['Alice', 0, 'Unknown']);
+		});
+
+		test.skip('complex default values', async () => {
+			const code = `
         function createArray(size, initialValue) {
           size = size || 3;
           initialValue = initialValue !== undefined ? initialValue : 0;
@@ -657,13 +657,13 @@ describe('modern JavaScript syntax', () => {
           createArray()
         ]
       `;
-      
-      expect(await evaluate<any[]>({}, code)).toEqual([
-        [1, 1, 1, 1, 1],
-        [0, 0],
-        [42, 42, 42],
-        [0, 0, 0]
-      ]);
-    });
-  });
+
+			expect(await evaluate<any[]>({}, code)).toEqual([
+				[1, 1, 1, 1, 1],
+				[0, 0],
+				[42, 42, 42],
+				[0, 0, 0],
+			]);
+		});
+	});
 });

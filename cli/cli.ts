@@ -3,7 +3,7 @@
 import * as acorn from 'acorn';
 import {createInterface} from 'readline';
 import pkg from '../package.json' with {type: 'json'};
-import {evaluate} from '../src/evaluator.ts';
+import {evaluate} from '../src/evaluator/index.ts';
 import {ReplHistory} from './repl-history.ts';
 
 const args = process.argv.slice(2);

@@ -1,5 +1,5 @@
 import {describe, expect, test} from 'bun:test';
-import {evaluate} from '../src/evaluator.ts';
+import {evaluate} from '../src/evaluator/index.ts';
 
 // Helper for creating consistent test environments
 function getAsyncTestGlobals() {

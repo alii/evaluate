@@ -1,4 +1,4 @@
-import {getRuntimeFunction} from './evaluator.ts';
+import {getRuntimeFunction} from './evaluator/functions.ts';
 import {MemoryTracker} from './memory.ts';
 import {RuntimeFunction} from './runtime.ts';
 

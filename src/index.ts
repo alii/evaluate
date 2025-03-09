@@ -1,4 +1,4 @@
-export {evaluate, evaluateAST} from './evaluator.ts';
-export {MemoryTracker} from './memory.ts';
-export {ReturnValue, RuntimeFunction} from './runtime.ts';
-export {Scope} from './scope.ts';
+export * from './evaluator/index.ts';
+export * from './memory.ts';
+export * from './runtime.ts';
+export * from './scope.ts';
