@@ -4,10 +4,8 @@ import {Scope} from './scope.ts';
 
 export type GlobalObject = Record<string, any>;
 
-// Create a labels context stack to track current labels
 const labelStack: string[] = [];
 
-// Helper function to get the current label (if any)
 function getCurrentLabel(): string | undefined {
 	return labelStack.length > 0 ? labelStack[labelStack.length - 1] : undefined;
 }
@@ -55,11 +53,9 @@ type ErrorLocation = {
  * @returns A formatted error message with line and position indicators
  */
 function formatError(script: string, error: Error, location?: ErrorLocation): Error {
-	// Split the script into lines
 	const lines = script.split('\n');
 
 	if (!location) {
-		// For syntax errors, try to extract location from the error message
 		if (error instanceof SyntaxError) {
 			const locMatch = error.message.match(/\((\d+):(\d+)\)/);
 			if (locMatch) {
@@ -68,21 +64,18 @@ function formatError(script: string, error: Error, location?: ErrorLocation): Er
 					column: parseInt(locMatch[2], 10),
 				};
 			} else {
-				return error; // Can't format without location
+				return error;
 			}
 		} else {
-			return error; // Can't format without location
+			return error;
 		}
 	}
 
-	// Adjust for 0-based vs 1-based indexing
 	const lineNumber = location.line;
 	const columnNumber = location.column;
 
-	// Prepare the formatted error message
 	let formattedError = `${error.name}: ${error.message}\n\n`;
 
-	// Add context around the error (1-2 lines before, error line, 1 line after)
 	const startLine = Math.max(0, lineNumber - 2);
 	const endLine = Math.min(lines.length - 1, lineNumber);
 
@@ -90,23 +83,19 @@ function formatError(script: string, error: Error, location?: ErrorLocation): Er
 		const isErrorLine = i === lineNumber - 1;
 		const lineNum = String(i + 1).padStart(4, ' ');
 
-		// Check if the line exists (might be out of bounds)
 		const line = i < lines.length ? lines[i] : '';
 		formattedError += `${lineNum} | ${line}\n`;
 
-		// Add the caret pointer on the error line
 		if (isErrorLine) {
-			const caretPadding = ' '.repeat(columnNumber + 7); // 7 = "XXXX | ".length
+			const caretPadding = ' '.repeat(columnNumber + 7);
 			formattedError += `${caretPadding}^ here\n`;
 		}
 	}
 
-	// Create a new error of the same type with the formatted message
 	const ErrorConstructor = error.constructor as new (message: string) => Error;
 	try {
 		return new ErrorConstructor(formattedError);
 	} catch (e) {
-		// Fall back to generic Error if the constructor doesn't work
 		return new Error(formattedError);
 	}
 }
@@ -123,17 +112,15 @@ export async function evaluate<T>(globalObj: GlobalObject, script: string): Prom
 			ecmaVersion: 2025,
 			sourceType: 'module',
 			allowAwaitOutsideFunction: true,
-			locations: true, // Enable location tracking for better error reporting
+			locations: true,
 		});
 
 		return evaluateAST(globalObj, ast, script);
 	} catch (error) {
-		// Format errors with line and column indicators
 		if (error instanceof Error) {
 			throw formatError(script, error);
 		}
 
-		// Re-throw other errors
 		throw error;
 	}
 }
@@ -155,7 +142,6 @@ export async function evaluateAST(
 			try {
 				result = await evaluateNode(statement, globalScope);
 			} catch (error) {
-				// For runtime errors with location data, add source context if available
 				if (error instanceof Error && originalScript && statement.loc) {
 					const location = {
 						line: statement.loc.start.line,
@@ -168,8 +154,6 @@ export async function evaluateAST(
 			}
 		}
 
-		// Copy any new variables defined in the scope back to the global object
-		// This allows variables to persist between REPL evaluations
 		for (const [key, value] of globalScope.getVariables()) {
 			globalObj[key] = value;
 		}
@@ -205,14 +189,11 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 					throw new Error(`Reference Error: ${name} is not defined`);
 				}
 
-				// Pre-increment/decrement: ++x or --x
 				if (node.prefix) {
 					value = node.operator === '++' ? value + 1 : value - 1;
 					scope.assign(name, value);
 					return value;
-				}
-				// Post-increment/decrement: x++ or x--
-				else {
+				} else {
 					const oldValue = value;
 					value = node.operator === '++' ? value + 1 : value - 1;
 					scope.assign(name, value);
@@ -230,14 +211,11 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 
 				let value = obj[prop];
 
-				// Pre-increment/decrement: ++obj.prop or --obj.prop
 				if (node.prefix) {
 					value = node.operator === '++' ? value + 1 : value - 1;
 					obj[prop] = value;
 					return value;
-				}
-				// Post-increment/decrement: obj.prop++ or obj.prop--
-				else {
+				} else {
 					const oldValue = value;
 					value = node.operator === '++' ? value + 1 : value - 1;
 					obj[prop] = value;
@@ -474,11 +452,8 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 		}
 
 		case 'BreakStatement': {
-			// Throw a break exception that will be caught by loop statements
-			// If there is a label, include it so we can break from labeled statements
 			const labelName = node.label?.name;
 
-			// If a label is specified, verify it's on the stack
 			if (labelName && !labelStack.includes(labelName)) {
 				throw new Error(`Undefined label: ${labelName}`);
 			}
@@ -487,11 +462,8 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 		}
 
 		case 'ContinueStatement': {
-			// Throw a continue exception that will be caught by loop statements
-			// If there is a label, include it so we can continue specific labeled loops
 			const labelName = node.label?.name;
 
-			// If a label is specified, verify it's on the stack
 			if (labelName && !labelStack.includes(labelName)) {
 				throw new Error(`Undefined label: ${labelName}`);
 			}
@@ -500,7 +472,6 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 		}
 
 		case 'ThrowStatement': {
-			// Throw a JavaScript exception
 			const value = await evaluateNode(node.argument, scope);
 			throw value instanceof Error ? value : new Error(String(value));
 		}
@@ -525,12 +496,10 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 						whileResult = await evaluateNode(node.body, scope);
 					} catch (e) {
 						if (e instanceof ContinueValue) {
-							// If there's no label in the continue, or it matches our current label
 							if (!e.label || e.label === label) {
-								// Continue to next iteration
 								continue;
 							}
-							// For other labeled continues, re-throw
+
 							throw e;
 						}
 						throw e;
@@ -539,12 +508,10 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 				return whileResult;
 			} catch (e) {
 				if (e instanceof BreakValue) {
-					// If there's no label in the break, or it matches our current label
 					if (!e.label || e.label === label) {
-						// Break out of the loop
 						return whileResult;
 					}
-					// For other labeled breaks, re-throw
+
 					throw e;
 				}
 				throw e;
@@ -604,10 +571,9 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 							}
 						} catch (e) {
 							if (e instanceof BreakValue && !e.label) {
-								// Break without a label should break from the switch
 								return result;
 							}
-							throw e; // Re-throw any other exceptions
+							throw e;
 						}
 					}
 				}
@@ -1141,18 +1107,14 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 		}
 
 		case 'ChainExpression': {
-			// Optional chaining (?.)
 			try {
 				return await evaluateNode(node.expression, scope);
 			} catch (error) {
-				// If any error occurs in the chain, just return undefined
-				// This simulates the behavior of optional chaining
 				return undefined;
 			}
 		}
 
 		case 'SequenceExpression': {
-			// Comma operator: evaluate all expressions and return the last one
 			let result;
 			for (const expression of node.expressions) {
 				result = await evaluateNode(expression, scope);
@@ -1161,7 +1123,6 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 		}
 
 		case 'ForOfStatement': {
-			// for...of loops
 			const forOfScope = new Scope(scope);
 			try {
 				const iterable = await evaluateNode(node.right, forOfScope);
@@ -1179,19 +1140,14 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 				try {
 					for (const value of iterable) {
 						try {
-							// Handle left side (can be a variable declaration or an assignment pattern)
 							if (node.left.type === 'VariableDeclaration') {
-								// Reset the scope before each iteration to avoid variable leaks
 								const iterationScope = new Scope(forOfScope);
 
-								// Declaration like: for (const x of arr)
-								const declarator = node.left.declarations[0]; // Assume single declaration
+								const declarator = node.left.declarations[0];
 
 								if (declarator.id.type === 'Identifier') {
-									// Simple case: for (const x of arr)
 									iterationScope.define(declarator.id.name, value);
 								} else if (declarator.id.type === 'ObjectPattern') {
-									// Destructuring case: for (const {a, b} of arr)
 									if (value === null || typeof value !== 'object') {
 										throw new TypeError('Cannot destructure non-object in for...of loop');
 									}
@@ -1206,7 +1162,6 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 										}
 									}
 								} else if (declarator.id.type === 'ArrayPattern') {
-									// Destructuring case: for (const [a, b] of arr)
 									if (!Array.isArray(value)) {
 										throw new TypeError('Cannot destructure non-array in for...of loop');
 									}
@@ -1219,10 +1174,8 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 									}
 								}
 
-								// Execute the body with iteration variables
 								lastResult = await evaluateNode(node.body, iterationScope);
 							} else if (node.left.type === 'Identifier') {
-								// Assignment like: for (x of arr)
 								forOfScope.assign(node.left.name, value);
 								lastResult = await evaluateNode(node.body, forOfScope);
 							} else {
@@ -1230,11 +1183,10 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 							}
 						} catch (e) {
 							if (e instanceof ContinueValue) {
-								// If this is a labeled continue and the label doesn't match, re-throw
 								if (e.label && e.label !== label) {
 									throw e;
 								}
-								// Otherwise continue to next iteration
+
 								continue;
 							}
 							throw e;
@@ -1243,11 +1195,10 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 					return lastResult;
 				} catch (e) {
 					if (e instanceof BreakValue) {
-						// If this is a labeled break and the label doesn't match, re-throw
 						if (e.label && e.label !== label) {
 							throw e;
 						}
-						// Otherwise break out of the loop and return the last result
+
 						return lastResult;
 					}
 					throw e;
@@ -1258,7 +1209,6 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 		}
 
 		case 'ForInStatement': {
-			// for...in loops
 			const forInScope = new Scope(scope);
 			try {
 				const right = await evaluateNode(node.right, forInScope);
@@ -1272,16 +1222,12 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 				try {
 					for (const key in right) {
 						try {
-							// Handle left side (can be a variable declaration or an assignment pattern)
 							if (node.left.type === 'VariableDeclaration') {
-								// Reset the scope before each iteration to avoid variable leaks
 								const iterationScope = new Scope(forInScope);
 
-								// Declaration like: for (const x in obj)
-								const declarator = node.left.declarations[0]; // Assume single declaration
+								const declarator = node.left.declarations[0];
 
 								if (declarator.id.type === 'Identifier') {
-									// Simple case: for (const x in obj)
 									iterationScope.define(declarator.id.name, key);
 								} else {
 									throw new Error(
@@ -1289,10 +1235,8 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 									);
 								}
 
-								// Execute the body with iteration variables
 								lastResult = await evaluateNode(node.body, iterationScope);
 							} else if (node.left.type === 'Identifier') {
-								// Assignment like: for (x in obj)
 								forInScope.assign(node.left.name, key);
 								lastResult = await evaluateNode(node.body, forInScope);
 							} else {
@@ -1300,11 +1244,10 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 							}
 						} catch (e) {
 							if (e instanceof ContinueValue) {
-								// If this is a labeled continue and the label doesn't match, re-throw
 								if (e.label && e.label !== label) {
 									throw e;
 								}
-								// Otherwise continue to next iteration
+
 								continue;
 							}
 							throw e;
@@ -1313,11 +1256,10 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 					return lastResult;
 				} catch (e) {
 					if (e instanceof BreakValue) {
-						// If this is a labeled break and the label doesn't match, re-throw
 						if (e.label && e.label !== label) {
 							throw e;
 						}
-						// Otherwise break out of the loop and return the last result
+
 						return lastResult;
 					}
 					throw e;
@@ -1328,23 +1270,18 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 		}
 
 		case 'LabeledStatement': {
-			// Add the label to the stack before evaluating the body
 			labelStack.push(node.label.name);
 
 			try {
-				// Evaluate the body with the label on the stack
 				return await evaluateNode(node.body, scope);
 			} finally {
-				// Always remove the label from the stack when done
 				labelStack.pop();
 			}
 		}
 
 		case 'ForStatement': {
-			// Basic for loop: for (init; test; update) { body }
 			const forScope = new Scope(scope);
 			try {
-				// Initialize
 				if (node.init) {
 					await evaluateNode(node.init, forScope);
 				}
@@ -1353,9 +1290,7 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 				const label = getCurrentLabel();
 
 				try {
-					// Test, body, update loop
 					while (true) {
-						// Check the test condition if it exists
 						if (node.test) {
 							const testResult = await evaluateNode(node.test, forScope);
 							if (!testResult) {
@@ -1364,22 +1299,18 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 						}
 
 						try {
-							// Execute the body
 							const result = await evaluateNode(node.body, forScope);
 							lastResult = result;
 						} catch (e) {
 							if (e instanceof ContinueValue) {
-								// If this is a labeled continue and the label doesn't match, re-throw
 								if (e.label && e.label !== label) {
 									throw e;
 								}
-								// Skip to the update expression
 							} else {
 								throw e;
 							}
 						}
 
-						// Execute the update expression
 						if (node.update) {
 							await evaluateNode(node.update, forScope);
 						}
@@ -1388,11 +1319,10 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 					return lastResult;
 				} catch (e) {
 					if (e instanceof BreakValue) {
-						// If this is a labeled break and the label doesn't match, re-throw
 						if (e.label && e.label !== label) {
 							throw e;
 						}
-						// Otherwise break out of the loop and return the last result
+
 						return lastResult;
 					}
 					throw e;
@@ -1565,7 +1495,6 @@ async function evaluateObjectExpression(node: acorn.ObjectExpression, scope: Sco
 			let key: string | number | symbol;
 
 			if (prop.computed) {
-				// Computed property: { [expr]: value }
 				key = await evaluateNode(prop.key, scope);
 			} else if (prop.key.type === 'Identifier') {
 				key = prop.key.name;
@@ -1575,7 +1504,6 @@ async function evaluateObjectExpression(node: acorn.ObjectExpression, scope: Sco
 				throw new Error('Unsupported object property key type: ' + prop.key.type);
 			}
 
-			// Handle shorthand: { x } instead of { x: x }
 			let value: any;
 			if (prop.shorthand && prop.key.type === 'Identifier') {
 				value = scope.lookup(prop.key.name);
@@ -1583,12 +1511,9 @@ async function evaluateObjectExpression(node: acorn.ObjectExpression, scope: Sco
 				value = await evaluateNode(prop.value, scope);
 			}
 
-			// Handle method definitions: { method() {} }
 			if (prop.method && prop.value.type === 'FunctionExpression') {
-				// Method definitions already handled by evaluateNode for FunctionExpression
 			}
 
-			// Use type assertion to handle symbol keys
 			if (typeof key === 'symbol') {
 				result[key as unknown as string] = value;
 			} else {

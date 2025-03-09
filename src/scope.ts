@@ -158,7 +158,6 @@ export class Scope {
 		return undefined;
 	}
 
-	// Method to get all variables in this scope
 	getVariables(): Map<string, any> {
 		return this.variables;
 	}
