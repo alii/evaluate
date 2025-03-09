@@ -533,7 +533,10 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 								'Expected an identifier in non-computed MemberExpression',
 							).name;
 
-					const leftValue = obj[prop];
+					if (obj === undefined || obj === null) {
+    throw new TypeError(`Cannot read property '${prop}' of ${obj === undefined ? 'undefined' : 'null'}`);
+}
+const leftValue = obj[prop];
 					const rightValue = await evaluateNode(node.right, scope);
 					let result;
 
@@ -1045,6 +1048,10 @@ async function evaluateMemberExpression(node: acorn.MemberExpression, scope: Sco
 		} else {
 			if (node.property.type !== 'Identifier') {
 				throw new Error('Unsupported property type in MemberExpression');
+			}
+
+			if (object === undefined || object === null) {
+				throw new TypeError(`Cannot read property '${node.property.name}' of ${object === undefined ? 'undefined' : 'null'}`);
 			}
 
 			return object[node.property.name];
