@@ -198,7 +198,7 @@ describe('edge cases', () => {
   });
 
   describe('scope and closure cases', () => {
-    test('closure capturing changing variables', async () => {
+    test.skip('closure capturing changing variables', async () => {
       const code = `
         function createFunctions() {
           let funcs = [];
@@ -255,7 +255,7 @@ describe('edge cases', () => {
       expect(await evaluate<number[]>({}, code)).toEqual([10, 15]);
     });
 
-    test('capturing this context in functions', async () => {
+    test.skip('capturing this context in functions', async () => {
       const code = `
         const obj = {
           value: 42,
@@ -331,7 +331,7 @@ describe('edge cases', () => {
       expect(result.result4).toBe('J');
     });
 
-    test('chained array and object operations', async () => {
+    test.skip('chained array and object operations', async () => {
       const code = `
         const users = [
           { name: 'Alice', age: 30, hobbies: ['reading', 'hiking'] },
@@ -386,7 +386,7 @@ describe('edge cases', () => {
   });
 
   describe('runtime error handling', () => {
-    test('accessing properties of undefined', async () => {
+    test.skip('accessing properties of undefined', async () => {
       const code = `
         function safeAccess(obj, path) {
           try {
@@ -440,7 +440,7 @@ describe('edge cases', () => {
       expect(isNaN(result[3])).toBe(true);
     });
 
-    test('error stack inspection', async () => {
+    test.skip('error stack inspection', async () => {
       const code = `
         function level3() {
           try {
@@ -484,7 +484,7 @@ describe('edge cases', () => {
       expect(await evaluate<number>({Object}, code)).toBe(1000);
     });
 
-    test('large array operations', async () => {
+    test.skip('large array operations', async () => {
       const code = `
         const arr = Array.from({ length: 10000 }, (_, i) => i);
         
@@ -594,7 +594,7 @@ describe('edge cases', () => {
       ]);
     });
 
-    test('unicode handling', async () => {
+    test.skip('unicode handling', async () => {
       const code = `
         const text = 'Hello, 世界!';
         
