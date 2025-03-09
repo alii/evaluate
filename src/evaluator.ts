@@ -31,22 +31,110 @@ function ensure<In, T extends In>(
 }
 
 /**
+ * Type for error location information
+ */
+type ErrorLocation = {
+	line: number;
+	column: number;
+	source?: string;
+};
+
+/**
+ * Formats an error with line and column indicators
+ * @param script The original script where the error occurred
+ * @param error The error that was thrown
+ * @param location Error location information (can be undefined for non-syntax errors)
+ * @returns A formatted error message with line and position indicators
+ */
+function formatError(script: string, error: Error, location?: ErrorLocation): Error {
+	// Split the script into lines
+	const lines = script.split('\n');
+
+	if (!location) {
+		// For syntax errors, try to extract location from the error message
+		if (error instanceof SyntaxError) {
+			const locMatch = error.message.match(/\((\d+):(\d+)\)/);
+			if (locMatch) {
+				location = {
+					line: parseInt(locMatch[1], 10),
+					column: parseInt(locMatch[2], 10),
+				};
+			} else {
+				return error; // Can't format without location
+			}
+		} else {
+			return error; // Can't format without location
+		}
+	}
+
+	// Adjust for 0-based vs 1-based indexing
+	const lineNumber = location.line;
+	const columnNumber = location.column;
+
+	// Prepare the formatted error message
+	let formattedError = `${error.name}: ${error.message}\n\n`;
+
+	// Add context around the error (1-2 lines before, error line, 1 line after)
+	const startLine = Math.max(0, lineNumber - 2);
+	const endLine = Math.min(lines.length - 1, lineNumber);
+
+	for (let i = startLine; i <= endLine; i++) {
+		const isErrorLine = i === lineNumber - 1;
+		const lineNum = String(i + 1).padStart(4, ' ');
+
+		// Check if the line exists (might be out of bounds)
+		const line = i < lines.length ? lines[i] : '';
+		formattedError += `${lineNum} | ${line}\n`;
+
+		// Add the caret pointer on the error line
+		if (isErrorLine) {
+			const caretPadding = ' '.repeat(columnNumber + 7); // 7 = "XXXX | ".length
+			formattedError += `${caretPadding}^ here\n`;
+		}
+	}
+
+	// Create a new error of the same type with the formatted message
+	const ErrorConstructor = error.constructor as new (message: string) => Error;
+	try {
+		return new ErrorConstructor(formattedError);
+	} catch (e) {
+		// Fall back to generic Error if the constructor doesn't work
+		return new Error(formattedError);
+	}
+}
+
+/**
  * Evaluates JavaScript code without using the built-in eval function
  * @param globalObj The global object context to use when evaluating
  * @param script The JavaScript code to evaluate
  * @returns The result of evaluating the script
  */
 export async function evaluate<T>(globalObj: GlobalObject, script: string): Promise<T> {
-	const ast = acorn.parse(script, {
-		ecmaVersion: 2025,
-		sourceType: 'module',
-		allowAwaitOutsideFunction: true,
-	});
+	try {
+		const ast = acorn.parse(script, {
+			ecmaVersion: 2025,
+			sourceType: 'module',
+			allowAwaitOutsideFunction: true,
+			locations: true, // Enable location tracking for better error reporting
+		});
 
-	return evaluateAST(globalObj, ast);
+		return evaluateAST(globalObj, ast, script);
+	} catch (error) {
+		// Format errors with line and column indicators
+		if (error instanceof Error) {
+			throw formatError(script, error);
+		}
+
+		// Re-throw other errors
+		throw error;
+	}
 }
 
-export async function evaluateAST(globalObj: GlobalObject, ast: acorn.Program) {
+export async function evaluateAST(
+	globalObj: GlobalObject,
+	ast: acorn.Program,
+	originalScript?: string,
+) {
 	const globalScope = new Scope(null, globalObj);
 
 	try {
@@ -56,7 +144,20 @@ export async function evaluateAST(globalObj: GlobalObject, ast: acorn.Program) {
 				throw new Error('Module declarations are not supported');
 			}
 
-			result = await evaluateNode(statement, globalScope);
+			try {
+				result = await evaluateNode(statement, globalScope);
+			} catch (error) {
+				// For runtime errors with location data, add source context if available
+				if (error instanceof Error && originalScript && statement.loc) {
+					const location = {
+						line: statement.loc.start.line,
+						column: statement.loc.start.column,
+					};
+					throw formatError(originalScript, error, location);
+				} else {
+					throw error;
+				}
+			}
 		}
 
 		// Copy any new variables defined in the scope back to the global object
@@ -534,9 +635,11 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 							).name;
 
 					if (obj === undefined || obj === null) {
-    throw new TypeError(`Cannot read property '${prop}' of ${obj === undefined ? 'undefined' : 'null'}`);
-}
-const leftValue = obj[prop];
+						throw new TypeError(
+							`Cannot read property '${prop}' of ${obj === undefined ? 'undefined' : 'null'}`,
+						);
+					}
+					const leftValue = obj[prop];
 					const rightValue = await evaluateNode(node.right, scope);
 					let result;
 
@@ -1051,7 +1154,9 @@ async function evaluateMemberExpression(node: acorn.MemberExpression, scope: Sco
 			}
 
 			if (object === undefined || object === null) {
-				throw new TypeError(`Cannot read property '${node.property.name}' of ${object === undefined ? 'undefined' : 'null'}`);
+				throw new TypeError(
+					`Cannot read property '${node.property.name}' of ${object === undefined ? 'undefined' : 'null'}`,
+				);
 			}
 
 			return object[node.property.name];
