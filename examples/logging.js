@@ -1,6 +1,6 @@
 import {evaluate} from '../src';
 
-// Logging example
+// Logging example - functional approach to avoid evaluator issues with 'this'
 const globalObject = {
   console: {
     log: (...args) => console.log('Eval:', ...args),
@@ -11,59 +11,76 @@ const globalObject = {
 };
 
 const code = `
-// Simple logger with levels
-class Logger {
-  constructor(name) {
-    this.name = name;
-    this.level = 'info'; // default level
+// Define logging levels
+const LEVELS = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3
+};
+
+// Format a log message
+function formatLogMessage(loggerName, level, message) {
+  const time = new Date().toISOString().substring(11, 19);
+  return \`[\${time}] [\${level.toUpperCase()}] [\${loggerName}] \${message}\`;
+}
+
+// Create logger factory function
+function createLogger(name) {
+  // Create a logger with initial settings
+  const logger = {
+    name,
+    level: 'info'
+  };
+  
+  // Add methods to the logger
+  return {
+    // Get the logger name
+    getName: () => logger.name,
     
-    this.levels = {
-      debug: 0,
-      info: 1,
-      warn: 2,
-      error: 3
-    };
-  }
-  
-  setLevel(level) {
-    if (this.levels[level] !== undefined) {
-      this.level = level;
+    // Get the current log level
+    getLevel: () => logger.level,
+    
+    // Set the log level
+    setLevel: (level) => {
+      if (LEVELS[level] !== undefined) {
+        logger.level = level;
+      }
+    },
+    
+    // Log a debug message
+    debug: (message) => {
+      if (LEVELS[logger.level] <= LEVELS.debug) {
+        console.log(formatLogMessage(logger.name, 'debug', message));
+      }
+    },
+    
+    // Log an info message
+    info: (message) => {
+      if (LEVELS[logger.level] <= LEVELS.info) {
+        console.log(formatLogMessage(logger.name, 'info', message));
+      }
+    },
+    
+    // Log a warning message
+    warn: (message) => {
+      if (LEVELS[logger.level] <= LEVELS.warn) {
+        console.warn(formatLogMessage(logger.name, 'warn', message));
+      }
+    },
+    
+    // Log an error message
+    error: (message) => {
+      if (LEVELS[logger.level] <= LEVELS.error) {
+        console.error(formatLogMessage(logger.name, 'error', message));
+      }
     }
-  }
-  
-  format(level, message) {
-    const time = new Date().toISOString().substring(11, 19);
-    return \`[\${time}] [\${level.toUpperCase()}] [\${this.name}] \${message}\`;
-  }
-  
-  debug(message) {
-    if (this.levels.debug >= this.levels[this.level]) {
-      console.log(this.format('debug', message));
-    }
-  }
-  
-  info(message) {
-    if (this.levels.info >= this.levels[this.level]) {
-      console.log(this.format('info', message));
-    }
-  }
-  
-  warn(message) {
-    if (this.levels.warn >= this.levels[this.level]) {
-      console.warn(this.format('warn', message));
-    }
-  }
-  
-  error(message) {
-    if (this.levels.error >= this.levels[this.level]) {
-      console.error(this.format('error', message));
-    }
-  }
+  };
 }
 
 // Create different loggers
-const appLogger = new Logger('App');
-const userLogger = new Logger('User');
+const appLogger = createLogger('App');
+const userLogger = createLogger('User');
 
 // Set different log levels
 appLogger.setLevel('debug');
@@ -81,12 +98,12 @@ userLogger.warn('Invalid password attempt');
 userLogger.error('User account locked');
 
 // Return logger info
-{
+({
   loggers: [
-    { name: appLogger.name, level: appLogger.level },
-    { name: userLogger.name, level: userLogger.level }
+    { name: appLogger.getName(), level: appLogger.getLevel() },
+    { name: userLogger.getName(), level: userLogger.getLevel() }
   ]
-}
+})
 `;
 
 console.log(await evaluate(globalObject, code));

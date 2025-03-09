@@ -1108,9 +1108,8 @@ describe('primitive methods', () => {
 		});
 	});
 
-	describe('empty DEFAULT_SCOPE', () => {
+	describe('empty global scope', () => {
 		test('no built-in globals by default', async () => {
-			// Try to access various globals that should not be available
 			const checkGlobal = async (globalName: string) => {
 				try {
 					await evaluate<any>({}, globalName);
@@ -1122,7 +1121,6 @@ describe('primitive methods', () => {
 				}
 			};
 
-			// All of these should not be defined
 			expect(await checkGlobal('Promise')).toBe(true);
 			expect(await checkGlobal('Error')).toBe(true);
 			expect(await checkGlobal('setTimeout')).toBe(true);
