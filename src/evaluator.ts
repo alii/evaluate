@@ -1,5 +1,5 @@
 import * as acorn from 'acorn';
-import {ReturnValue, BreakValue, ContinueValue, RuntimeFunction} from './runtime.ts';
+import {BreakValue, ContinueValue, ReturnValue, RuntimeFunction} from './runtime.ts';
 import {Scope} from './scope.ts';
 
 export type GlobalObject = Record<string, any>;
@@ -399,7 +399,7 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 								if (prop.key.type === 'Identifier') {
 									key = prop.key.name;
 								} else if (prop.key.type === 'Literal') {
-									key = String(prop.key.value);
+									key = String((prop.key as acorn.Literal).value);
 								} else {
 									throw new Error('Unsupported property key type in nested object destructuring');
 								}
@@ -477,12 +477,12 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 			// Throw a break exception that will be caught by loop statements
 			// If there is a label, include it so we can break from labeled statements
 			const labelName = node.label?.name;
-			
+
 			// If a label is specified, verify it's on the stack
 			if (labelName && !labelStack.includes(labelName)) {
 				throw new Error(`Undefined label: ${labelName}`);
 			}
-			
+
 			throw new BreakValue(labelName);
 		}
 
@@ -490,12 +490,12 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 			// Throw a continue exception that will be caught by loop statements
 			// If there is a label, include it so we can continue specific labeled loops
 			const labelName = node.label?.name;
-			
+
 			// If a label is specified, verify it's on the stack
 			if (labelName && !labelStack.includes(labelName)) {
 				throw new Error(`Undefined label: ${labelName}`);
 			}
-			
+
 			throw new ContinueValue(labelName);
 		}
 
@@ -1170,7 +1170,7 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 				if (
 					iterable === null ||
 					iterable === undefined ||
-					typeof iterable[Symbol.iterator] !== 'function'
+					typeof iterable[Symbol.iterator as unknown as string] !== 'function'
 				) {
 					throw new TypeError('Cannot iterate over non-iterable value');
 				}
@@ -1199,7 +1199,9 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 									for (const prop of declarator.id.properties) {
 										if (prop.type === 'Property' && prop.value.type === 'Identifier') {
 											const key =
-												prop.key.type === 'Identifier' ? prop.key.name : String(prop.key.value);
+												prop.key.type === 'Identifier'
+													? prop.key.name
+													: String((prop.key as acorn.Literal).value);
 											iterationScope.define(prop.value.name, value[key]);
 										}
 									}
@@ -1328,7 +1330,7 @@ async function evaluateNode(node: acorn.Expression | acorn.Statement, scope: Sco
 		case 'LabeledStatement': {
 			// Add the label to the stack before evaluating the body
 			labelStack.push(node.label.name);
-			
+
 			try {
 				// Evaluate the body with the label on the stack
 				return await evaluateNode(node.body, scope);
@@ -1568,7 +1570,7 @@ async function evaluateObjectExpression(node: acorn.ObjectExpression, scope: Sco
 			} else if (prop.key.type === 'Identifier') {
 				key = prop.key.name;
 			} else if (prop.key.type === 'Literal') {
-				key = String(prop.key.value);
+				key = String((prop.key as acorn.Literal).value);
 			} else {
 				throw new Error('Unsupported object property key type: ' + prop.key.type);
 			}
@@ -1586,7 +1588,12 @@ async function evaluateObjectExpression(node: acorn.ObjectExpression, scope: Sco
 				// Method definitions already handled by evaluateNode for FunctionExpression
 			}
 
-			result[key] = value;
+			// Use type assertion to handle symbol keys
+			if (typeof key === 'symbol') {
+				result[key as unknown as string] = value;
+			} else {
+				result[key] = value;
+			}
 		} else {
 			const spreadValue = await evaluateNode(prop.argument, scope);
 			if (spreadValue !== null && typeof spreadValue === 'object') {
@@ -1601,7 +1608,7 @@ async function evaluateObjectExpression(node: acorn.ObjectExpression, scope: Sco
 }
 
 async function evaluateArrayExpression(node: acorn.ArrayExpression, scope: Scope): Promise<any[]> {
-	const result = [];
+	const result: any[] = [];
 
 	for (const element of node.elements) {
 		if (!element) {
